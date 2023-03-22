@@ -6,7 +6,7 @@ using a git bare repo along with a hand crafted installation CLI.
 ## What's included?
 
 - [Brew](https://brew.sh/) and Brew cask programs
-- [iTerm2] is still my weapon of choice. Might move to Warp once they improve
+- [iTerm2](https://iterm2.com/) is still my weapon of choice. Might move to Warp once they improve
   Fish support
 - [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher)
 - [Starship](https://starship.rs/) prompt
