@@ -1,0 +1,6 @@
+jorgebucaran/fisher
+jethrokuan/z
+jhillyerd/plugin-git
+jorgebucaran/autopair.fish
+gazorby/fish-abbreviation-tips
+PatrickF1/fzf.fish
