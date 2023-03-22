@@ -25,6 +25,12 @@ using a git bare repo along with a hand crafted installation CLI.
 - I really recommend authenticating with Github using their CLI (`gh`), this is
   a lot easier than generating and setting SSH keys.
 
+## Updating your dotfiles
+
+I've added Fish alias to make it easy to update your dotfiles, simply run
+`configure` to enter "maintenance mode". This will alias git to make it easier
+to work with the bare repo.
+
 ## Fonts
 
 - Vscode: Dank Mono, FiraCode Nerd Font, Menlo, Monaco, Courier New, monospace
