@@ -45,7 +45,7 @@ separately:
 ### Troubleshooting
 
 - Is is something wrong with the fonts? Try `echo "\ue0b0 \u00b1 \ue0a0 \u27a6
-\u2718 \u26a1 \u2699"`. This should look like this ![Icons](./characters.png)
+\u2718 \u26a1 \u2699"`. This should look like this ![Icons](.././setup-mac/characters.png)
 - The install script should change shell for you, but in case it doesn't here's
   how you do it: `chsh -s $(which fish)`. You might have to add
   `/opt/homebrew/bin/fish` to `/etc/shells` for this to work: `sudo echo
