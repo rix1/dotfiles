@@ -17,6 +17,7 @@ using a git bare repo along with a hand crafted installation CLI.
 
 1. Clone the repo in your home root. See this [guide for more details](https://www.ackama.com/what-we-think/the-best-way-to-store-your-dotfiles-a-bare-git-repository-explained/).
 2. Run the binary included in the source, or install Deno and run `deno run ./install/install.ts`.
+   Important: Since the script relies on local files, you most likely need to run the executable from the root of ./setup-mac/.
 3. Set iterm2 theme and fonts.
 4. Debug colors, syntax highlighting etc
 5. If you are using PGP and have your GPG key stored on Keybase, check out this

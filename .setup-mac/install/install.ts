@@ -3,15 +3,13 @@ import {
   Input,
 } from "https://deno.land/x/cliffy@v0.25.7/prompt/mod.ts";
 import { selectSteps, steps } from "./steps.ts";
-import { info, success } from "./utils/prompt.ts";
+import { info, promptSudo, success } from "./utils/prompt.ts";
 import { sumTime } from "./utils/time.ts";
 
 let email: string, name: string;
 
-// await promptSudo();
+await promptSudo();
 await initialize();
-
-// await selectSteps();
 
 async function initialize() {
   email = await Input.prompt({
