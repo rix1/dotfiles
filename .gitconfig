@@ -24,7 +24,7 @@
 [includeIf "gitdir:~/Development/otovo/"]
     path = ~/Development/otovo/.gitconfig
 [include]
-    path = ~/themes.gitconfig
+    path = ~/.config/themes.gitconfig
 [gpg]
   program = gpg
 [interactive]
