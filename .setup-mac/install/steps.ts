@@ -25,12 +25,12 @@ export const steps = {
   [nanoid()]: {
     name: "Install command line software (Brew)",
     timeEstimate: MINUTE * 5,
-    fn: () => installBrewApps("./requirements/brew"),
+    fn: () => installBrewApps("./requirements/brew.txt"),
   },
   [nanoid()]: {
     name: "Install useful software (Brew cask)",
     timeEstimate: MINUTE * 4,
-    fn: () => installBrewApps("./requirements/cask"),
+    fn: () => installBrewApps("./requirements/cask.txt"),
   },
   [nanoid()]: {
     name: "Install Fish shell",
