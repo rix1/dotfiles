@@ -12,19 +12,19 @@ using a git bare repo along with a hand crafted installation CLI.
 - A couple of fonts, some of which from [Nerd Fonts](https://www.nerdfonts.com/)
 - Bare repo with no aliases for dotfiles 🎉
 
-
 ![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)
 
 ## Installation and setup instructions
 
 1. Clone the repo in your home root. See this [guide for more details](https://www.ackama.com/what-we-think/the-best-way-to-store-your-dotfiles-a-bare-git-repository-explained/).
-2. Run the binary included in the source: 
-  ```sh
-  cd ~/.setup-mac/install/
-  ./setup-mac-<v1> # replace with lastest version
-  ```
-   This is a standalone compiled version of the `install.ts` Deno script. This is an interactive prompt that will guide you through configuring sane Mac defaults and install recommended software. See [configuration options below](#customizing-the-default-recommendations) 
-   
+2. Download the `configure-macos` binary from the repo's release page on Github and run it
+
+   ```sh
+   ./configure-macos
+   ```
+
+   This is an interactive prompt that will guide you through configuring sane Mac defaults and install recommended software. See [configuration options below](#customizing-the-default-recommendations). The binary is a standalone compiled version of the `install.ts` Deno script. It will ask for permissions as you go.
+
    **Important:** The script assumes it can find installation requirements in `$HOME/setup-mac/install/requirements/`. Keep this in mind if you ever change the directory structure @rix1.
 
 3. Set iterm2 theme and fonts.
@@ -60,10 +60,10 @@ $HOME
 
 ```
 
-
 ### Customizing the default recommendations
 
 When running the install script, it will ask you which programs you want to install. To edit the list of apps, edit the txt files in the `requirements/` directory:
+
 ```
 .setup-mac/
 └── install
@@ -73,7 +73,6 @@ When running the install script, it will ask you which programs you want to inst
         └── fish.txt
 
 ```
-
 
 ### Releasing
 
@@ -88,8 +87,6 @@ git tag v1.0.0 && git push --tags
 ```
 
 This will trigger the workflow, and a new release with the compiled binary will be created on the GitHub repository.
-
-
 
 ## Fonts
 

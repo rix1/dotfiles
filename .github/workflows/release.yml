@@ -20,7 +20,7 @@ jobs:
 
       - name: Compile Deno app
         run: |
-          deno compile --output setup-mac setup-mac/install/install.ts
+          deno compile --output configure-macos setup-mac/install/install.ts
 
       - name: Create Release
         id: create_release
@@ -39,6 +39,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./setup-mac
-          asset_name: setup-mac
+          asset_path: ./configure-macos
+          asset_name: configure-macos
           asset_content_type: application/octet-stream
