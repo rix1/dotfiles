@@ -20,20 +20,25 @@ jobs:
 
       - name: Compile Deno app
         run: |
-          deno compile --output configure-macos setup-mac/install/install.ts
+          deno compile --output dist/configure-macos setup-mac/install/install.ts
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+      # - name: Create Release
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref }}
+      #     release_name: Release ${{ github.ref }}
+      #     draft: false
+      #     prerelease: false
 
-      - name: Upload binary to release
-        uses: softprops/action-gh-release@v1
+      # - name: Upload binary to release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: configure-macos
+
+      - uses: actions/upload-artifact@v3
         with:
-          files: configure-macos
+          name: configure-macos
+          path: dist/configure-macos
