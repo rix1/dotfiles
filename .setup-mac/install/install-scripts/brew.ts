@@ -1,6 +1,10 @@
 import { Checkbox } from "https://deno.land/x/cliffy@v0.25.7/prompt/checkbox.ts";
 import { Confirm } from "https://deno.land/x/cliffy@v0.25.7/prompt/confirm.ts";
-import { exec, OutputMode } from "https://deno.land/x/exec@0.0.5/mod.ts";
+import {
+  exec,
+  execSequence,
+  OutputMode,
+} from "https://deno.land/x/exec@0.0.5/mod.ts";
 import { resolvePath } from "../utils/filePaths.ts";
 import { checkStatus, info, success, warn } from "../utils/prompt.ts";
 
@@ -24,6 +28,16 @@ export async function installBrew() {
     const { code } = await p.status();
 
     checkStatus(code, "Brew installation 🍺");
+
+    await execSequence(
+      [
+        `(echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> $HOME/.zprofile`,
+        `eval "$(/opt/homebrew/bin/brew shellenv)"`,
+      ],
+      { output: OutputMode.Capture }
+    );
+
+    success("✅ Brew installed and configured");
   }
 }
 
