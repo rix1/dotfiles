@@ -75,6 +75,21 @@ When running the install script, it will ask you which programs you want to inst
 ```
 
 
+### Releasing
+
+I've configured a Github action in `.github/workflows/release.yml`. This workflow triggers on push events with a tag that starts with "v"
+(e.g., v1.0.0). It sets up Deno, compiles your Deno app, creates a new
+release, and uploads the compiled binary as a release asset.
+
+So to release a new version, simply push a new tag:
+
+```sh
+git tag v1.0.0 && git push --tags
+```
+
+This will trigger the workflow, and a new release with the compiled binary will be created on the GitHub repository.
+
+
 
 ## Fonts
 
