@@ -17,9 +17,10 @@ using a git bare repo along with a hand crafted installation CLI.
 ## Installation and setup instructions
 
 1. Clone the repo in your home root. See this [guide for more details](https://www.ackama.com/what-we-think/the-best-way-to-store-your-dotfiles-a-bare-git-repository-explained/).
-2. Download the `configure-macos` binary from the repo's release page on Github and run it
+2. Download the `configure-macos` binary from the repo's [release page on Github](https://github.com/rix1/dotfiles/releases) and run it
 
    ```sh
+   chmod -x configure-macos # make it executable
    ./configure-macos
    ```
 
