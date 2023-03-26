@@ -20,7 +20,7 @@ jobs:
 
       - name: Compile Deno app
         run: |
-          deno compile --output dist/configure-macos setup-mac/install/install.ts
+          deno compile --target aarch64-apple-darwin --output dist/configure-macos setup-mac/install/install.ts
 
       # - name: Create Release
       #   id: create_release
