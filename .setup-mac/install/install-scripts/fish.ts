@@ -10,7 +10,13 @@ export async function installFish() {
   });
 
   if (previousInstallation.status.success) {
-    success("Fish already installed, nothing to do.");
+    success("Fish already installed, setting shell...");
+    // Add fish shell to /etc/shells
+    await exec("sudo echo /opt/homebrew/bin/fish >> /etc/shells");
+    success("✅ Added Fish to /etc/shells");
+
+    await exec("chsh -s $(which fish)");
+    success("✅ Changed shell to Fish");
     return;
   } else {
     warn("Installing Fish");
