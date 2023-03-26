@@ -25,8 +25,11 @@ using a git bare repo along with a hand crafted installation CLI.
   ```
    This is a standalone compiled version of the `install.ts` Deno script. This is an interactive prompt that will guide you through configuring sane Mac defaults and install recommended software. See [configuration options below](#customizing-the-default-recommendations) 
    **Important:** Since the script relies on local files, you most likely need to run the executable from the root of ./setup-mac/.
+
 3. Set iterm2 theme and fonts.
+
 4. Debug colors, syntax highlighting etc
+
 5. If you are using PGP and have your GPG key stored on Keybase, check out this
    guide: https://blog.scottlowe.org/2017/09/06/using-keybase-gpg-macos/
 
