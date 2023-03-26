@@ -1,8 +1,8 @@
 1password
+arc
 cleanshot
 cron
 dropbox
-font-fira-mono-nerd-font
 google-chrome
 iina
 imageoptim
@@ -13,6 +13,7 @@ notion
 numi
 raycast
 rectangle
+reflect
 slack
 spotify
 sublime-text
