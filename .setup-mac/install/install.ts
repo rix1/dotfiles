@@ -33,7 +33,6 @@ async function initialize() {
   info("\nAll set! Now what can I do for you today?");
 
   const stepsToDo = await selectSteps();
-  // returns a list of IDs to do. Next print total time.
 
   info(
     `\nPerfect, I will do ${

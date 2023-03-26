@@ -24,7 +24,8 @@ using a git bare repo along with a hand crafted installation CLI.
   ./setup-mac-<v1> # replace with lastest version
   ```
    This is a standalone compiled version of the `install.ts` Deno script. This is an interactive prompt that will guide you through configuring sane Mac defaults and install recommended software. See [configuration options below](#customizing-the-default-recommendations) 
-   **Important:** Since the script relies on local files, you most likely need to run the executable from the root of ./setup-mac/.
+   
+   **Important:** The script assumes it can find installation requirements in `$HOME/.setup-mac/install/requirements/`. Keep this in mind if you ever change the directory structure @rix1.
 
 3. Set iterm2 theme and fonts.
 

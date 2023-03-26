@@ -8,6 +8,7 @@ import { setupMac } from "./install-scripts/macos.ts";
 
 import { installFishApps } from "./install-scripts/fish.ts";
 import { humanizeTime } from "./utils/time.ts";
+import { getRequirementsPath } from "./utils/filePaths.ts";
 
 const MINUTE = 60; // seconds
 
@@ -25,12 +26,12 @@ export const steps = {
   [nanoid()]: {
     name: "Install command line software (Brew)",
     timeEstimate: MINUTE * 5,
-    fn: () => installBrewApps("./requirements/brew.txt"),
+    fn: () => installBrewApps(getRequirementsPath("brew.txt")),
   },
   [nanoid()]: {
     name: "Install useful software (Brew cask)",
     timeEstimate: MINUTE * 4,
-    fn: () => installBrewApps("./requirements/cask.txt"),
+    fn: () => installBrewApps(getRequirementsPath("cask.txt")),
   },
   [nanoid()]: {
     name: "Install Fish shell",
@@ -40,7 +41,7 @@ export const steps = {
   [nanoid()]: {
     name: "Install Fish plugins (Fisher)",
     timeEstimate: MINUTE,
-    fn: () => installFishApps("./requirements/fish.txt"),
+    fn: () => installFishApps(getRequirementsPath("fish.txt")),
   },
   [nanoid()]: {
     name: "Install fonts",

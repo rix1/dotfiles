@@ -5,7 +5,6 @@ import {
   execSequence,
   OutputMode,
 } from "https://deno.land/x/exec@0.0.5/mod.ts";
-import { resolvePath } from "../utils/filePaths.ts";
 import { checkStatus, info, success, warn } from "../utils/prompt.ts";
 
 export async function installBrew() {
@@ -42,7 +41,7 @@ export async function installBrew() {
 }
 
 export async function installBrewApps(sourcePath: string) {
-  const file = await Deno.readTextFile(resolvePath(sourcePath));
+  const file = await Deno.readTextFile(sourcePath);
   const input = file.trim().split("\n");
 
   const apps = await Checkbox.prompt({

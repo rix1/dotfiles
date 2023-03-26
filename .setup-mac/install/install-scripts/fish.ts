@@ -46,7 +46,7 @@ export async function installFishApps(sourcePath: string) {
 
   await checkStatus(res.status.code, "Fisher installation");
 
-  const file = await Deno.readTextFile(resolvePath(sourcePath));
+  const file = await Deno.readTextFile(sourcePath);
   const input = file.trim().split("\n");
 
   const apps = await Checkbox.prompt({
