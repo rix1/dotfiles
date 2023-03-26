@@ -1,5 +1,3 @@
-![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)
-
 # Welcome 👋
 
 This is my personal dotfiles in its current (most likely not final) form. It's
@@ -13,6 +11,9 @@ using a git bare repo along with a hand crafted installation CLI.
 - [Starship](https://starship.rs/) prompt
 - A couple of fonts, some of which from [Nerd Fonts](https://www.nerdfonts.com/)
 - Bare repo with no aliases for dotfiles 🎉
+
+
+![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)
 
 ## Installation and setup instructions
 
