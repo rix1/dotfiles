@@ -16,7 +16,12 @@ using a git bare repo along with a hand crafted installation CLI.
 
 ## Installation and setup instructions
 
-1. Clone the repo in your home root. See this [guide for more details](https://www.ackama.com/what-we-think/the-best-way-to-store-your-dotfiles-a-bare-git-repository-explained/).
+1. Clone the repo in your home root. We're using the `git --bare` repo approach to avoid symlinking all the dotfiles. See this [guide for more details](https://www.ackama.com/what-we-think/the-best-way-to-store-your-dotfiles-a-bare-git-repository-explained/).
+   1. `git clone --bare https://github.com/rix1/dotfiles $HOME/.dotfiles`
+   2. Make a temporary alias `alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'`. After everything's been set up, you can use the `configure` command to interact with the `.dotfiles` git repo.
+   3. `config config --local status.showUntrackedFiles no`
+   4. `config checkout`.
+   5. Ensure that dotfiles have been added (e.g. `.config/`).
 2. Download the `configure-macos` binary from the repo's [release page on Github](https://github.com/rix1/dotfiles/releases) and run it
 
    ```sh
