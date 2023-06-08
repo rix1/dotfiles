@@ -5,7 +5,11 @@ alias gcmsg='git commit -m'
 
 alias cat=bat
 
+# Region Cloud
 alias woc='z cloud && vf activate cloud'
+alias rss='gunicorn -w2 -t120 --reload cloud.wsgi'
+# Endregion Cloud
+
 alias pp=pnpm
 
 # Region kubernetes
