@@ -2,6 +2,9 @@
 [character]
 success_symbol = "[➜](green)"
 
+[battery]
+disabled = true
+
 # Configure the number of directories to truncate in the current path
 [directory]
 truncation_length = 3
