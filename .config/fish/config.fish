@@ -14,6 +14,7 @@ pyenv init - | source
 
 # set -x ANDROID_HOME $HOME/Library/Android/sdk
 # set -U fish_user_paths $HOME/Library/Android/sdk/platform-tools $fish_user_paths
+fish_add_path /opt/homebrew/opt/postgresql@15/bin/
 
 
 # Kubernetis autocompletion
@@ -22,3 +23,6 @@ pyenv init - | source
 
 __fish_complete_django django-admin.py
 __fish_complete_django manage.py
+
+abbr --add dfa defbro company.thebrowser.Browser
+abbr --add dfc defbro com.google.Chrome
