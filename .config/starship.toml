@@ -87,6 +87,9 @@ symbol = " "
 [nodejs]
 symbol = " "
 
+[deno]
+format = 'via [🦕 $version](green bold) '
+
 [os.symbols]
 Alpine = " "
 Amazon = " "
