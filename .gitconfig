@@ -39,3 +39,7 @@
     conflictstyle = diff3
 [diff]
     colorMoved = default
+[column]
+	ui = auto
+[branch]
+	sort = -committerdate
