@@ -1,6 +1,8 @@
 
-alias l='ls -l'
-alias ll='ls -la'
+alias l='exa'
+alias ll="exa -l -g --icons --git"
+alias llt="exa -1 --icons --tree --git-ignore"
+
 alias gcmsg='git commit -m'
 
 alias cat=bat
