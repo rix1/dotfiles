@@ -13,5 +13,38 @@
   "buffer_font_family": "FiraCode Nerd Font Propo",
   "ui_font_size": 13,
   "buffer_font_size": 12,
-  "tab_size": 2
+  "tab_size": 2,
+  "format_on_save": "on",
+  "languages": {
+    "TypeScript": {
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!eslint",
+        "..."
+      ]
+    },
+    "Markdown": {
+      "formatter": {
+        "external": {
+          "command": "deno",
+          "arguments": ["fmt", "--ext", "md", "-"]
+        }
+      }
+    },
+    "TSX": {
+      "formatter": {
+        "external": {
+          "command": "deno",
+          "arguments": ["fmt", "--ext", "tsx", "-"]
+        }
+      },
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!eslint",
+        "..."
+      ]
+    }
+  }
 }

@@ -44,3 +44,4 @@ yalc.lock
 rix-temp/
 .venv
 .zed
+pyrightconfig.json
