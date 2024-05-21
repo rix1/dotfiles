@@ -1,4 +1,9 @@
 # Replace the "❯" symbol in the prompt with "➜"
+[username]
+show_always = true
+format = '[$user 🦄 ]($style)'
+disabled = false
+
 [character]
 success_symbol = "[➜](green)"
 
