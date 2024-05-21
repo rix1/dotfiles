@@ -45,3 +45,4 @@ rix-temp/
 .venv
 
 .zed/
+pyrightconfig.json
