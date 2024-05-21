@@ -1,7 +1,6 @@
 
-alias l='exa'
-alias ll="exa -l -g --icons --git"
-alias llt="exa -1 --icons --tree --git-ignore"
+alias l='ls -l'
+alias ll="ls -la"
 
 alias gcmsg='git commit -m'
 
@@ -10,6 +9,7 @@ alias cat=bat
 # Region Cloud
 alias woc='z cloud && vf activate cloud'
 alias rss='gunicorn -w2 -t120 --reload cloud.wsgi'
+alias rssp='ENVIRONMENT=production gunicorn -w2 -t120 --reload cloud.wsgi'
 # Endregion Cloud
 
 alias pp=pnpm
