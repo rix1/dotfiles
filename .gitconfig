@@ -12,7 +12,7 @@
   logf = git log --name-only
 [core]
   excludesfile = ~/.gitignore
-  editor = vim
+  editor = nvim
   pager = delta
 [rebase]
   autoSquash = true
