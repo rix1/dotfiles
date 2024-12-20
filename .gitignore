@@ -46,3 +46,8 @@ rix-temp/
 
 .zed/
 pyrightconfig.json
+
+cloud/scratchpad.py
+scratchpad/*
+reconciliation-cleanup.py
+scripts/k8s-shell-custom.sh
