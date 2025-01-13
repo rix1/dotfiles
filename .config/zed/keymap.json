@@ -1,0 +1,11 @@
+[
+  {
+    "context": "Editor",
+    "bindings": {
+      "cmd-shift-l": "editor::SplitSelectionIntoLines",
+      "cmd-ctrl-g": "editor::SelectAllMatches",
+      "cmd-o": "file_finder::Toggle",
+      "cmd-k p": "editor::CopyRelativePath"
+    }
+  }
+]

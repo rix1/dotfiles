@@ -1,0 +1,70 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run the `open default settings` command
+// from the command palette or from `Zed` application menu.
+{
+  "file_scan_exclusions": [".yarn/"],
+  "active_pane_modifiers": {
+    "inactive_opacity": 0.7,
+    "border_size": 0.2
+  },
+  "theme": "One Dark",
+  "assistant": {
+    "version": "2",
+    "default_open_ai_model": null,
+    "default_model": {
+      "provider": "zed.dev",
+      "model": "claude-3-5-sonnet-latest"
+    }
+  },
+  "show_inline_completions": false,
+  // "inline_completions": {
+  //   "disabled_globs": [".env", "cloud/financial/salesorder/models.py"]
+  // },
+  "base_keymap": "VSCode",
+  "ui_font_family": "CommitMono",
+  "buffer_font_family": "FiraCode Nerd Font Mono",
+  "ui_font_size": 12,
+  "buffer_font_size": 11,
+  "vim_mode": false,
+  "languages": {
+    "Markdown": {
+      "show_inline_completions": false
+    },
+    "TSX": {
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      }
+    },
+    "TypeScript": {
+      // "language_servers": ["deno"]
+    },
+    "JSON": {
+      "formatter": "prettier"
+    },
+    "HTML": {
+      "format_on_save": "off"
+    },
+    "Python": {
+      "language_servers": ["pyright", "ruff"],
+      "format_on_save": "on",
+      "formatter": [
+        {
+          "code_actions": {
+            "source.organizeImports.ruff": true,
+            "source.fixAll.ruff": true
+          }
+        },
+        {
+          "language_server": {
+            "name": "ruff"
+          }
+        }
+      ]
+    }
+  }
+}
