@@ -1,0 +1,4 @@
+function fish_user_key_bindings
+    bind \cg 'test -d .git; and git checkout (git for-each-ref --sort=-committerdate refs/heads/ --format="%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))" | fzf --ansi | string match -r "[^ ]*(?=\s-)" | string trim); and commandline -f repaint'
+    # bind \cg 'test -d .git; git for-each-ref --sort=-committerdate refs/heads/ --format="%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))" | fzf --ansi | string match -r "[^ ]*(?=\s-)" | string trim); and commandline -f repaint'
+end
