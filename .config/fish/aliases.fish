@@ -7,7 +7,7 @@ alias gcmsg='git commit -m'
 alias cat=bat
 
 # Region Cloud
-alias woc='z cloud && vf activate cloud'
+alias woc='z cloud'
 alias rss='gunicorn -w2 -t120 --reload --bind 0.0.0.0:8000 cloud.wsgi'
 alias rssp='ENVIRONMENT=production gunicorn -w2 -t120 --reload cloud.wsgi'
 # Endregion Cloud
@@ -22,4 +22,3 @@ alias wip='git add . && git commit -m "wip"'
 
 
 abbr --add djl djlint --reformat
-
