@@ -1,0 +1,78 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+  "features": {
+    "edit_prediction_provider": "zed"
+  },
+  "file_scan_exclusions": [
+    ".yarn/"
+    // "*/migrations/*"
+  ],
+  "assistant": {
+    "default_profile": "write",
+    "default_model": {
+      "provider": "zed.dev",
+      "model": "claude-3-7-sonnet-latest"
+    },
+    "version": "2"
+  },
+  "edit_predictions": {
+    "mode": "subtle"
+  },
+  "ui_font_size": 12,
+  "vim_mode": false,
+  "ui_font_family": "iA Writer Mono V",
+  "buffer_font_size": 12,
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "Catppuccin Frappé"
+  },
+  "languages": {
+    "Markdown": {
+      "show_edit_predictions": false
+    },
+    "TSX": {
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      }
+    },
+    "TypeScript": {
+      // "language_servers": ["deno"]
+    },
+    "JSON": {
+      "formatter": "prettier"
+    },
+    "HTML": {
+      "format_on_save": "off"
+    },
+    // "SQL": {
+    // 2025-03-19 12:23 I just deleted the sqruff extension. Wasn't working as expected.
+    //   "language_servers": ["sqruff"],
+    //   "formatter": { "language_server": { "name": "sqruff" } }
+    // },
+    "Python": {
+      "language_servers": ["pyright", "ruff"],
+      "format_on_save": "on",
+      "formatter": [
+        {
+          "code_actions": {
+            "source.organizeImports.ruff": true,
+            "source.fixAll.ruff": true
+          }
+        },
+        {
+          "language_server": {
+            "name": "ruff"
+          }
+        }
+      ]
+    }
+  }
+}

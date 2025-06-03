@@ -1,0 +1,7 @@
+{
+  "dropdown item": {
+    "prefix": "ddi",
+    "body": ["{{ dropdown_item(_('$1'), url('$2'), request) }}", "$0"],
+    "description": "Dropdown item"
+  }
+}
