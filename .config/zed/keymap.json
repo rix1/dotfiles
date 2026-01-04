@@ -22,5 +22,10 @@
       "cmd-k j": "editor::OpenContextMenu",
       "cmd-shift-v": "workspace::ToggleVimMode"
     }
+  },
+  {
+    "bindings": {
+      "ctrl-cmd-f": null
+    }
   }
 ]

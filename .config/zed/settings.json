@@ -1,81 +1,112 @@
-// Zed settings
-//
-// For information on how to configure Zed, see the Zed
-// documentation: https://zed.dev/docs/configuring-zed
-//
-// To see all of Zed's default settings without changing your
-// custom settings, run `zed: open default settings` from the
-// command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "colorize_brackets": true,
+  "prettier": {
+    "allowed": true,
+  },
+  "title_bar": {
+    "show_branch_icon": false,
+  },
+  "agent_ui_font_size": 12.0,
   "features": {
-    "edit_prediction_provider": "zed"
+    "edit_prediction_provider": "none",
   },
   "file_scan_exclusions": [
     ".yarn/",
-    //
-    "*/migrations/*"
+    "cloud/static/leaflet/",
+    "cloud/static/fontawesome-full/",
   ],
+  // "file_scan_inclusions": ["./scratchpad"],
   "agent": {
+    "use_modifier_to_send": true,
+    "always_allow_tool_actions": true,
     "default_profile": "write",
     "default_model": {
       "provider": "zed.dev",
-      "model": "claude-sonnet-4-latest"
+      "model": "claude-sonnet-4",
     },
-    "version": "2"
   },
   "edit_predictions": {
-    "mode": "subtle"
+    "mode": "subtle",
   },
-  "ui_font_size": 12,
-  "agent_font_size": 12,
-  "buffer_font_size": 12,
+  "ui_font_size": 11.0,
+  "agent_buffer_font_size": 11.0,
+  "buffer_font_size": 11,
   "vim_mode": false,
   "ui_font_family": "iA Writer Mono S",
   "buffer_font_family": "iA Writer Mono V",
   "theme": {
     "mode": "system",
     "light": "Catppuccin Latte",
-    "dark": "Catppuccin Frappé"
+    "dark": "Catppuccin Frappé",
+  },
+  "file_types": {
+    "HTML": ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2"],
   },
   "languages": {
     "Markdown": {
-      "show_edit_predictions": false
+      "show_edit_predictions": false,
     },
     "TSX": {
       "code_actions_on_format": {
-        "source.organizeImports": true
-      }
+        "source.organizeImports": true,
+      },
     },
-    "TypeScript": {
-      // "language_servers": ["deno"]
-    },
+    "TypeScript": {},
     "JSON": {
-      "formatter": "prettier"
+      "formatter": "prettier",
     },
     "HTML": {
-      "format_on_save": "off"
+      "format_on_save": "off",
+      "language_servers": [
+        "vscode-html-language-server",
+        "tailwindcss-language-server",
+      ],
     },
-    // "SQL": {
-    // 2025-03-19 12:23 I just deleted the sqruff extension. Wasn't working as expected.
-    //   "language_servers": ["sqruff"],
-    //   "formatter": { "language_server": { "name": "sqruff" } }
-    // },
     "Python": {
-      "language_servers": ["pyright", "ruff"],
-      "format_on_save": "on",
-      "formatter": [
-        {
-          "code_actions": {
-            "source.organizeImports.ruff": true,
-            "source.fixAll.ruff": true
-          }
+      //   "language_servers": ["basedpyright", "ruff"],
+      //   "format_on_save": "on",
+      //   "formatter": "language_server",
+      //   "code_actions_on_format": {
+      //     "source.fixAll.ruff": true,
+      //     "source.organizeImports.ruff": true
+      //   },
+      "inlay_hints": {
+        "enabled": true,
+      },
+    },
+  },
+  "lsp": {
+    "basedpyright": {
+      "settings": {
+        "analysis": {
+          "diagnosticMode": "workspace",
+          "typeCheckingMode": "standard",
+          "inlayHints": {
+            "callArgumentNames": true,
+            "functionReturnTypes": true,
+            "variableTypes": true,
+            "pytypeComments": true,
+          },
+          "exclude": [
+            "**/migrations",
+            "**/__pycache__",
+            "**/node_modules",
+            "**/.venv",
+          ],
         },
-        {
-          "language_server": {
-            "name": "ruff"
-          }
-        }
-      ]
-    }
-  }
+      },
+    },
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "jinja2": "html",
+          "django-html": "html",
+        },
+        "classFunctions": ["cva", "cx"],
+        "experimental": {
+          "classRegex": ["[cls|className]\\s\\:\\=\\s\"([^\"]*)"],
+        },
+      },
+    },
+  },
 }
