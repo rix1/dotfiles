@@ -1,0 +1,1 @@
+source "/Users/rix1/.deno/env.fish"
