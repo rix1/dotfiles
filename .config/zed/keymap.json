@@ -27,5 +27,11 @@
     "bindings": {
       "ctrl-cmd-f": null
     }
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "alt-cmd-g c": "editor::OpenGitBlameCommit"
+    }
   }
 ]
