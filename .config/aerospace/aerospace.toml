@@ -115,8 +115,8 @@ automatically-unhide-macos-hidden-apps = false
     alt-shift-l = 'move right'
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#resize
-    alt-minus = 'resize smart -50'
-    alt-equal = 'resize smart +50'
+    alt-minus = 'resize smart -250'
+    alt-equal = 'resize smart +250'
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
     alt-1 = 'workspace 1'
@@ -239,6 +239,10 @@ automatically-unhide-macos-hidden-apps = false
 
 [[on-window-detected]]
     if.app-id = 'company.thebrowser.Browser'
+    run = ['layout floating']
+
+[[on-window-detected]]
+    if.app-id = 'com.sindresorhus.Dato'
     run = ['layout floating']
 
 [[on-window-detected]]

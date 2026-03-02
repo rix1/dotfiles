@@ -1,6 +1,6 @@
 set -x LANG en_US.UTF-8
 set -x GPG_TTY (tty)
-set -gx EDITOR subl
+set -gx EDITOR zed
 
 fish_add_path /opt/homebrew/bin
 
