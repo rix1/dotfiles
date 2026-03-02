@@ -7,9 +7,6 @@
     "show_branch_icon": false,
   },
   "agent_ui_font_size": 12.0,
-  "features": {
-    "edit_prediction_provider": "none",
-  },
   "file_scan_exclusions": [
     ".yarn/",
     "cloud/static/leaflet/",
@@ -17,15 +14,19 @@
   ],
   // "file_scan_inclusions": ["./scratchproject-hubspot-deal-mapping.pypad"],
   "agent": {
+    "tool_permissions": {
+      "default": "allow"
+    },
     "use_modifier_to_send": true,
-    "always_allow_tool_actions": true,
     "default_profile": "write",
     "default_model": {
+      "enable_thinking": false,
       "provider": "openai",
-      "model": "gpt-5.2",
+      "model": "gpt-5.2-codex",
     },
   },
   "edit_predictions": {
+    "provider": "none",
     "mode": "subtle",
   },
   "ui_font_size": 11.0,

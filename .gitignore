@@ -52,3 +52,9 @@ scratchpad/*
 reconciliation-cleanup.py
 scripts/k8s-shell-custom.sh
 .envrc
+
+
+scripts/ralph/
+
+.claude/
+progress.txt

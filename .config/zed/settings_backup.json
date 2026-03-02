@@ -1,127 +1,110 @@
-// Zed settings
-//
-// For information on how to configure Zed, see the Zed
-// documentation: https://zed.dev/docs/configuring-zed
-//
-// To see all of Zed's default settings without changing your
-// custom settings, run `zed: open default settings` from the
-// command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "colorize_brackets": true,
+  "prettier": {
+    "allowed": true,
+  },
   "title_bar": {
-    "show_branch_icon": false
+    "show_branch_icon": false,
   },
   "agent_ui_font_size": 12.0,
-  "features": {
-    "edit_prediction_provider": "zed"
-  },
   "file_scan_exclusions": [
-    ".yarn/"
-    //
-    // "*/migrations/*"
+    ".yarn/",
+    "cloud/static/leaflet/",
+    "cloud/static/fontawesome-full/",
   ],
+  // "file_scan_inclusions": ["./scratchproject-hubspot-deal-mapping.pypad"],
   "agent": {
     "use_modifier_to_send": true,
     "always_allow_tool_actions": true,
-    "default_profile": "ask",
+    "default_profile": "write",
     "default_model": {
-      "provider": "zed.dev",
-      "model": "claude-haiku-4-5"
-    }
+      "provider": "openai",
+      "model": "gpt-5.2-codex",
+    },
   },
   "edit_predictions": {
-    "mode": "subtle"
+    "provider": "none",
+    "mode": "subtle",
   },
-  "ui_font_size": 12.0,
-  "agent_buffer_font_size": 12.0,
-  "buffer_font_size": 12.0,
+  "ui_font_size": 11.0,
+  "agent_buffer_font_size": 11.0,
+  "buffer_font_size": 11,
   "vim_mode": false,
   "ui_font_family": "iA Writer Mono S",
   "buffer_font_family": "iA Writer Mono V",
   "theme": {
     "mode": "system",
     "light": "Catppuccin Latte",
-    "dark": "Catppuccin Frappé"
+    "dark": "Catppuccin Frappé",
+  },
+  "file_types": {
+    "HTML": ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2"],
   },
   "languages": {
     "Markdown": {
-      "show_edit_predictions": false
+      "show_edit_predictions": false,
     },
     "TSX": {
       "code_actions_on_format": {
-        "source.organizeImports": true
-      }
+        "source.organizeImports": true,
+      },
     },
-    "TypeScript": {
-      // "language_servers": ["deno"]
-    },
+    "TypeScript": {},
     "JSON": {
-      "formatter": "prettier"
+      "formatter": "prettier",
     },
     "HTML": {
-      "format_on_save": "off"
+      "format_on_save": "off",
+      "language_servers": [
+        "vscode-html-language-server",
+        "tailwindcss-language-server",
+      ],
     },
     "Python": {
-      // Use basedpyright for type checking (better than pylance for Zed)
-      // and ruff for linting/formatting
-      "language_servers": ["basedpyright", "ruff"],
-
-      // "code_actions_on_format": {
-      //   "source.organizeImports.ruff": true,
-      //   "source.fixAll.ruff": true
-      // },
-      "formatter": [
-        // Fix all auto-fixable lint violations
-        { "code_action": "source.fixAll.ruff" },
-        // Organize imports
-        { "code_action": "source.organizeImports.ruff" }
-      ],
-
-      "format_on_save": "on",
-
-      // Inlay hints for better DX
+      //   "language_servers": ["basedpyright", "ruff"],
+      //   "format_on_save": "on",
+      //   "formatter": "language_server",
+      //   "code_actions_on_format": {
+      //     "source.fixAll.ruff": true,
+      //     "source.organizeImports.ruff": true
+      //   },
       "inlay_hints": {
-        "enabled": false
-      }
-    }
+        "enabled": true,
+      },
+    },
   },
-
-  // Configure basedpyright to match your mypy setup
   "lsp": {
     "basedpyright": {
       "settings": {
         "analysis": {
-          // Diagnose all files, not just open ones
           "diagnosticMode": "workspace",
-
-          // Match your type checking rigor
           "typeCheckingMode": "standard",
-
-          // Show inlay hints for function arguments and return types
           "inlayHints": {
             "callArgumentNames": true,
             "functionReturnTypes": true,
             "variableTypes": true,
-            "pytypeComments": true
+            "pytypeComments": true,
           },
-
-          // Exclude migrations and common non-code directories
           "exclude": [
             "**/migrations",
             "**/__pycache__",
             "**/node_modules",
-            "**/.venv"
-          ]
-        }
-      }
+            "**/.venv",
+          ],
+        },
+      },
     },
-
-    "ruff": {
-      "initialization_options": {
-        "settings": {
-          // Ruff will read from your pyproject.toml, but you can override here if needed
-          // Leave empty to use pyproject.toml defaults
-        }
-      }
-    }
-  }
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "jinja2": "html",
+          "django-html": "html",
+        },
+        "classFunctions": ["cva", "cx"],
+        "experimental": {
+          "classRegex": ["[cls|className]\\s\\:\\=\\s\"([^\"]*)"],
+        },
+      },
+    },
+  },
 }
