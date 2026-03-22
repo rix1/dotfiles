@@ -1,4 +1,18 @@
 {
+  "ssh_connections": [
+    {
+      "host": "rikards-imac",
+      "args": [],
+      "projects": [
+        {
+          "paths": ["/Users/rix1/Development"],
+        },
+        {
+          "paths": ["/Users/rix1/Development/otovo/cloud/./"],
+        },
+      ],
+    },
+  ],
   "colorize_brackets": true,
   "prettier": {
     "allowed": true,
@@ -12,17 +26,18 @@
     "cloud/static/leaflet/",
     "cloud/static/fontawesome-full/",
   ],
-  // "file_scan_inclusions": ["./scratchproject-hubspot-deal-mapping.pypad"],
+  "file_scan_inclusions": ["./scratchpad/"],
   "agent": {
     "tool_permissions": {
-      "default": "allow"
+      "default": "allow",
     },
     "use_modifier_to_send": true,
     "default_profile": "write",
     "default_model": {
-      "enable_thinking": false,
-      "provider": "openai",
-      "model": "gpt-5.2-codex",
+      "effort": "medium",
+      "enable_thinking": true,
+      "provider": "zed.dev",
+      "model": "gpt-5.4",
     },
   },
   "edit_predictions": {

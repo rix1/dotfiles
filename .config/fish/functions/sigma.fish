@@ -13,7 +13,7 @@ function sigma --description "Sync new photo folders from Sigma camera to Dropbo
     end
 
     set CAMERA_PATH "/Volumes/Sigma BF/DCIM"
-    set DESTINATION_PATH "/Users/rikardeide/Dropbox/Photos/Sigma"
+    set DESTINATION_PATH "/Users/rix1/Dropbox/Photos/Sigma"
     set CAMERA_VOLUME "/Volumes/Sigma BF"
     
     # Get today's date in the camera's format (YYMMDD)
