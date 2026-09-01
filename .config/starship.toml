@@ -1,4 +1,17 @@
 # Replace the "❯" symbol in the prompt with "➜"
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$package\
+$nodejs\
+$python\
+${custom.llm_conversations}\
+$line_break\
+$character"""
+
 [username]
 show_always = true
 format = '[$user 🦄 ]($style)'
@@ -148,3 +161,13 @@ symbol = " "
 
 [spack]
 symbol = "🅢 "
+
+[custom.llm_conversations]
+command = "/Users/rix1/.config/bin/llm-conversation-count"
+description = "Claude and Codex conversations for the current directory"
+format = '[$output]($style) '
+shell = ["/bin/sh", "-c"]
+style = "dimmed white"
+symbol = ""
+use_stdin = false
+when = "true"
