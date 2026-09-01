@@ -62,6 +62,8 @@ scripts/k8s-shell-custom.sh
 .config/rclone/
 .config/dbxcli/
 .config/gh/hosts.yml
+# fish runtime state — tracked only on machine branches, never on main
+.config/fish/fish_variables
 .config/pgcli/
 .config/1Password/
 .config/raycast/
