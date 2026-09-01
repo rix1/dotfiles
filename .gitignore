@@ -61,6 +61,7 @@ scripts/k8s-shell-custom.sh
 .config/GAMConfig.zip
 .config/rclone/
 .config/dbxcli/
+.config/gh/hosts.yml
 .config/pgcli/
 .config/1Password/
 .config/raycast/
