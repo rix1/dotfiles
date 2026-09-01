@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+# repo-status — overview of every git repo under a root directory.
+#
+#   repo-status [ROOT]            attention-sorted table of all repos
+#   repo-status --list            one line per repo (television source)
+#   repo-status --detail REPO     full report for one repo (television preview)
+#   repo-status --fetch           git fetch every repo first, then report
+#   repo-status --no-color        disable colors (auto-disabled when not a tty)
+#
+# ROOT defaults to $REPO_STATUS_ROOT, then ~/Development.
+
+set -uo pipefail
+
+ROOT=${REPO_STATUS_ROOT:-$HOME/Development}
+MODE=table
+DETAIL_TARGET=""
+RECORD_TARGET=""
+DO_FETCH=0
+COLOR=auto
+JOBS=8
+MAXDEPTH=6
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --list) MODE=list ;;
+    --detail) MODE=detail; DETAIL_TARGET=${2-}; shift ;;
+    --record) MODE=record; RECORD_TARGET=${2-}; shift ;;
+    --fetch) DO_FETCH=1 ;;
+    --no-color) COLOR=never ;;
+    --color) COLOR=always ;;
+    -h|--help)
+      sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0 ;;
+    -*) echo "repo-status: unknown option: $1" >&2; exit 2 ;;
+    *) ROOT=$1 ;;
+  esac
+  shift
+done
+ROOT=${ROOT%/}
+
+SELF=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+
+use_color=1
+if [[ $COLOR == never || (${COLOR} == auto && ! -t 1 && $MODE == table) ]]; then
+  use_color=0
+fi
+# list/detail feed television through a pipe; keep colors unless told otherwise
+[[ $MODE == list || $MODE == detail ]] && [[ $COLOR != never ]] && use_color=1
+
+if (( use_color )); then
+  R=$'\033[31m' G=$'\033[32m' Y=$'\033[33m' B=$'\033[34m' M=$'\033[35m' C=$'\033[36m'
+  BD=$'\033[1m' DM=$'\033[2m' RS=$'\033[0m'
+else
+  R='' G='' Y='' B='' M='' C='' BD='' DM='' RS=''
+fi
+
+# ---------------------------------------------------------------- discovery
+
+find_repos() {
+  find "$ROOT" -maxdepth "$MAXDEPTH" \
+      \( -name node_modules -o -name .venv -o -name venv -o -name .cache \) -prune \
+      -o -name .git -prune -print 2>/dev/null |
+    sed 's|/\.git$||' | LC_ALL=C sort |
+    awk '  # drop repos nested inside another repo (vendored, submodules)
+      { if (keep != "" && index($0, keep "/") == 1) next; keep = $0; print }'
+}
+
+human_age() { # seconds -> 5m / 3h / 12d
+  local s=$1
+  if   (( s < 5400 ));   then echo "$(( s / 60 ))m"
+  elif (( s < 129600 )); then echo "$(( s / 3600 ))h"
+  else                        echo "$(( s / 86400 ))d"
+  fi
+}
+
+# ---------------------------------------------------------------- record
+# One tab-separated line per repo; every other mode is built on these.
+# Fields: rel branch staged unstaged untracked conflicts ahead behind
+#         upstate unpushed localonly stashes fetchage lastrel subject score
+
+emit_record() {
+  local p=$1
+  local rel=${p#"$ROOT"/}
+  [[ $rel == "$p" ]] && rel=$(basename "$p")
+
+  local st
+  st=$(git -C "$p" status --porcelain=v2 --branch --no-renames 2>/dev/null) || return 0
+
+  local head upstream ahead behind staged unstaged untracked conflicts
+  IFS=$'\t' read -r head upstream ahead behind staged unstaged untracked conflicts < <(
+    printf '%s\n' "$st" | awk '
+      $1 == "#" && $2 == "branch.head"     { head = $3 }
+      $1 == "#" && $2 == "branch.upstream" { up = $3 }
+      $1 == "#" && $2 == "branch.ab"       { a = substr($3, 2); b = substr($4, 2) }
+      $1 == "1" || $1 == "2" {
+        if (substr($2, 1, 1) != ".") s++
+        if (substr($2, 2, 1) != ".") m++
+      }
+      $1 == "u" { c++ }
+      $1 == "?" { u++ }
+      # "-" placeholders: bash read collapses adjacent tabs, so no field may be empty
+      END { printf "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n", \
+              (head == "" ? "-" : head), (up == "" ? "-" : up), a, b, s, m, u, c }')
+  [[ $head == "-" ]] && head="?"
+  [[ $upstream == "-" ]] && upstream=""
+
+  local branches=0 localonly=0 gone=0
+  while IFS=$'\t' read -r _ref up track; do
+    [[ -z ${_ref:-} ]] && continue
+    branches=$(( branches + 1 ))
+    [[ -z $up ]] && localonly=$(( localonly + 1 ))
+    [[ $track == "[gone]" ]] && gone=$(( gone + 1 ))
+  done < <(git -C "$p" for-each-ref refs/heads \
+             --format='%(refname:short)%09%(upstream)%09%(upstream:track)' 2>/dev/null)
+
+  local upstate=ok
+  local remotes
+  remotes=$(git -C "$p" remote 2>/dev/null)
+  if [[ -z $remotes ]]; then upstate=noremote
+  elif [[ $head == "(detached)" ]]; then upstate=detached
+  elif (( gone > 0 )); then upstate=gone
+  elif [[ -z $upstream ]]; then upstate=none
+  fi
+
+  local branch=$head
+  if [[ $head == "(detached)" ]]; then
+    branch="@$(git -C "$p" rev-parse --short HEAD 2>/dev/null || echo '?')"
+  fi
+
+  local unpushed=0
+  if [[ -n $remotes ]]; then
+    unpushed=$(git -C "$p" rev-list --count --branches --not --remotes 2>/dev/null || echo 0)
+  fi
+
+  local stashes
+  stashes=$(git -C "$p" rev-list --walk-reflogs --count refs/stash 2>/dev/null || echo 0)
+
+  local fetchage="never" gcd fh
+  gcd=$(git -C "$p" rev-parse --git-common-dir 2>/dev/null)
+  [[ $gcd != /* ]] && gcd="$p/$gcd"
+  fh="$gcd/FETCH_HEAD"
+  if [[ -s $fh ]]; then
+    fetchage=$(human_age $(( $(date +%s) - $(stat -f %m "$fh") )))
+  fi
+
+  local lastrel subject
+  IFS=$'\t' read -r lastrel subject < <(
+    git -C "$p" log -1 --format='%cr%x09%s' 2>/dev/null | tr -d '\r')
+  if [[ -z ${lastrel:-} ]]; then lastrel="—"; subject="(no commits)"; fi
+  subject=${subject//$'\t'/ }
+
+  local dirty=$(( staged + unstaged )) score=0
+  (( conflicts > 0 ))        && score=$(( score + 64 ))
+  [[ $upstate == noremote ]] && score=$(( score + 48 ))
+  (( dirty > 0 ))            && score=$(( score + 32 ))
+  (( unpushed > 0 ))         && score=$(( score + 16 ))
+  (( untracked > 0 ))        && score=$(( score + 8 ))
+  [[ $upstate == gone ]]     && score=$(( score + 8 ))
+  (( behind > 0 ))           && score=$(( score + 4 ))
+  (( localonly > 0 ))        && score=$(( score + 4 ))
+  (( stashes > 0 ))          && score=$(( score + 2 ))
+  [[ $upstate == detached ]] && score=$(( score + 2 ))
+
+  printf '%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%s\t%s\t%s\t%d\n' \
+    "$rel" "$branch" "$staged" "$unstaged" "$untracked" "$conflicts" \
+    "$ahead" "$behind" "$upstate" "$unpushed" "$localonly" "$stashes" \
+    "$fetchage" "$lastrel" "$subject" "$score"
+}
+
+if [[ $MODE == record ]]; then
+  emit_record "$RECORD_TARGET"
+  exit 0
+fi
+
+# ---------------------------------------------------------------- detail
+
+if [[ $MODE == detail ]]; then
+  p=$DETAIL_TARGET
+  while [[ $p == *" " ]]; do p=${p% }; done   # strip padding television may pass along
+  while [[ $p == " "* ]]; do p=${p# }; done
+  [[ $p != /* ]] && p="$ROOT/$p"
+  if ! git -C "$p" rev-parse --git-dir >/dev/null 2>&1; then
+    echo "not a git repository: $p" >&2; exit 1
+  fi
+  rec=$(emit_record "$p")
+  IFS=$'\t' read -r rel branch staged unstaged untracked conflicts ahead behind \
+    upstate unpushed localonly stashes fetchage lastrel subject score <<<"$rec"
+
+  echo "${BD}${rel}${RS}  ${DM}${p}${RS}"
+  remoteline=$(git -C "$p" remote -v 2>/dev/null | awk '$3 == "(fetch)" { print $1 "  " $2; exit }')
+  if [[ -n $remoteline ]]; then
+    echo "${DM}${remoteline}  ·  fetched: ${fetchage}${RS}"
+  else
+    echo "${R}${BD}no remote configured — this repo exists only on this machine${RS}"
+  fi
+  echo
+
+  cur_gone=$(git -C "$p" for-each-ref refs/heads --format='%(HEAD) %(upstream:track)' 2>/dev/null |
+    awk '/^\*/ { print (index($0, "[gone]") ? 1 : 0) }')
+  line="On ${M}${branch}${RS}"
+  [[ ${cur_gone:-0} == 1 ]] && line+="  ${R}(upstream gone)${RS}"
+  [[ $upstate == none ]] && line+="  ${Y}(no upstream)${RS}"
+  [[ $upstate == detached ]] && line+="  ${M}(detached HEAD)${RS}"
+  (( ahead  > 0 )) && line+="  ${C}↑${ahead} to push${RS}"
+  (( behind > 0 )) && line+="  ${M}↓${behind} behind${RS}"
+  [[ $upstate == ok || $upstate == gone ]] && [[ ${cur_gone:-0} == 0 ]] && \
+    (( ahead == 0 && behind == 0 )) && line+="  ${G}in sync${RS}"
+  echo "$line"
+
+  wt=""
+  (( conflicts > 0 )) && wt+="${R}${BD}${conflicts} conflicted${RS}  "
+  (( staged    > 0 )) && wt+="${G}${staged} staged${RS}  "
+  (( unstaged  > 0 )) && wt+="${R}${unstaged} modified${RS}  "
+  (( untracked > 0 )) && wt+="${Y}${untracked} untracked${RS}  "
+  [[ -z $wt ]] && wt="${G}clean${RS}"
+  echo "Working tree: $wt"
+  echo
+
+  if (( staged + unstaged + untracked + conflicts > 0 )); then
+    echo "${DM}── working tree ────────────────────────────${RS}"
+    git -C "$p" -c color.status=always status --short 2>/dev/null | head -20
+    n=$(git -C "$p" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+    (( n > 20 )) && echo "${DM}   … $(( n - 20 )) more${RS}"
+    echo
+  fi
+
+  echo "${DM}── branches ────────────────────────────────${RS}"
+  git -C "$p" for-each-ref refs/heads --color=always --sort=-committerdate \
+    --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) %(color:cyan)%(upstream:short)%(color:reset) %(color:red)%(upstream:track)%(color:reset) %(color:dim)%(committerdate:relative)%(color:reset)' \
+    2>/dev/null | head -12
+  echo
+
+  if [[ $upstate != noremote ]] && (( unpushed > 0 )); then
+    echo "${DM}── ${unpushed} commit(s) not on any remote ─────────────${RS}"
+    git -C "$p" log --branches --not --remotes --oneline --decorate --color=always 2>/dev/null | head -12
+    (( unpushed > 12 )) && echo "${DM}   … $(( unpushed - 12 )) more${RS}"
+    echo
+  fi
+
+  if (( stashes > 0 )); then
+    echo "${DM}── stashes ─────────────────────────────────${RS}"
+    git -C "$p" stash list --color=always 2>/dev/null | head -6
+    echo
+  fi
+
+  echo "${DM}── recent commits ──────────────────────────${RS}"
+  git -C "$p" log -8 --oneline --graph --decorate --color=always 2>/dev/null
+  exit 0
+fi
+
+# ---------------------------------------------------------------- table / list
+
+repos=$(find_repos)
+if [[ -z $repos ]]; then
+  echo "no git repositories found under $ROOT" >&2
+  exit 1
+fi
+
+if (( DO_FETCH )); then
+  echo "${DM}fetching $(wc -l <<<"$repos" | tr -d ' ') repos…${RS}" >&2
+  printf '%s\n' "$repos" | tr '\n' '\0' |
+    xargs -0 -P "$JOBS" -I{} env GIT_TERMINAL_PROMPT=0 git -C {} fetch --quiet 2>/dev/null
+fi
+
+export REPO_STATUS_ROOT=$ROOT
+records=$(printf '%s\n' "$repos" | tr '\n' '\0' |
+  xargs -0 -P "$JOBS" -I{} "$SELF" --record {} |
+  sort -t$'\t' -k16,16nr -k1,1f)
+
+if [[ -t 1 ]]; then cols=$(tput cols 2>/dev/null || echo 120); else cols=${COLUMNS:-160}; fi
+
+printf '%s\n' "$records" | LC_ALL=C awk -F'\t' \
+  -v mode="$MODE" -v cols="$cols" \
+  -v R="$R" -v G="$G" -v Y="$Y" -v B="$B" -v M="$M" -v C="$C" \
+  -v BD="$BD" -v DM="$DM" -v RST="$RS" '
+function chip(sym, n, col,   t) {          # colored chip + tracked visible width
+  t = col sym n RST " "
+  # non-ascii symbols are all single-width glyphs; do not trust length() on them
+  chlen += (sym ~ /^[ -~]+$/ ? length(sym) : 1) + length(n "") + 1
+  return t
+}
+function chips(i,   s) {
+  s = ""; chlen = 0
+  if (conf[i] > 0)            s = s chip("⚠", conf[i], R BD)
+  if (dirty[i] > 0)           s = s chip("✗", dirty[i], R)
+  if (untr[i] > 0)            s = s chip("?", untr[i], Y)
+  if (unp[i] > 0)             s = s chip("↑", unp[i], C)
+  if (behind[i] > 0)          s = s chip("↓", behind[i], M)
+  if (stash[i] > 0)           s = s chip("⚑", stash[i], Y)
+  if (lonly[i] > 0 && upst[i] != "noremote") s = s chip("∅", lonly[i], B)
+  if (upst[i] == "noremote")  s = s chip("no-remote", "", R BD)
+  if (upst[i] == "gone")      s = s chip("gone", "", R)
+  if (upst[i] == "detached")  s = s chip("detached", "", M)
+  if (chlen == 0) { s = G "✓" RST; chlen = 1 }
+  else            { sub(/ $/, "", s); chlen-- }
+  return s
+}
+function trunc(s, w,   t, u) {             # truncate on a word boundary (utf-8 safe)
+  if (w <= 10 || length(s) <= w) return s
+  t = substr(s, 1, w - 1)
+  u = t; sub(/ [^ ]*$/, "", u)
+  if (u != "") t = u
+  return t "…"
+}
+function pad(n,   r) { r = ""; while (n-- > 0) r = r " "; return r }
+{
+  n++
+  rel[n] = $1; br[n] = $2; dirty[n] = $3 + $4; untr[n] = $5; conf[n] = $6
+  behind[n] = $8; upst[n] = $9; unp[n] = $10; lonly[n] = $11; stash[n] = $12
+  fage[n] = $13; when[n] = $14; subj[n] = $15; score[n] = $16
+  if (length($1) > wr) wr = length($1)
+  if (length($2) > wb) wb = length($2)
+}
+END {
+  if (wb > 22) wb = 22
+  # first pass over chips to size the status column
+  for (i = 1; i <= n; i++) { ch[i] = chips(i); cw[i] = chlen; if (chlen > ws) ws = chlen }
+
+  if (mode == "list") {
+    for (i = 1; i <= n; i++) {
+      printf "%s%s   %s%s   %s%s · %s%s\n", \
+        rel[i], pad(wr - length(rel[i])), ch[i], pad(ws - cw[i]), \
+        DM, when[i], trunc(subj[i], 60), RST
+    }
+    exit
+  }
+
+  printf "%s%-" wr "s  %-" wb "s  %-" ws "s  %s%s\n", \
+    DM, "REPO", "BRANCH", "STATUS", "LAST COMMIT", RST
+  avail = cols - (wr + 2 + wb + 2 + ws + 2) - 1
+  for (i = 1; i <= n; i++) {
+    b = br[i]; if (length(b) > wb) b = substr(b, 1, wb - 1) "…"
+    bcol = DM; if (upst[i] == "gone") bcol = R; if (upst[i] == "detached") bcol = M
+    last = trunc(when[i] " · " subj[i], avail)
+    name = rel[i]
+    if (score[i] > 0) name = BD name RST
+    printf "%s%s  %s%s%s%s  %s%s  %s%s%s\n", \
+      name, pad(wr - length(rel[i])), bcol, b, RST, pad(wb - length(b)), \
+      ch[i], pad(ws - cw[i]), DM, last, RST
+
+    if (score[i] > 0) att++
+    if (dirty[i] + conf[i] > 0) c_dirty++
+    if (unp[i] > 0) c_unp++
+    if (untr[i] > 0) c_untr++
+    if (behind[i] > 0) c_behind++
+    if (upst[i] == "noremote") c_norem++
+    if (stash[i] > 0) c_stash++
+  }
+  s = ""
+  if (c_dirty)  s = s R c_dirty " dirty" RST " · "
+  if (c_unp)    s = s C c_unp " with unpushed commits" RST " · "
+  if (c_untr)   s = s Y c_untr " with untracked files" RST " · "
+  if (c_behind) s = s M c_behind " behind origin" RST " · "
+  if (c_stash)  s = s Y c_stash " with stashes" RST " · "
+  if (c_norem)  s = s R BD c_norem " without a remote" RST " · "
+  sub(/ · $/, "", s)
+  printf "\n%s%d repos%s", BD, n, RST
+  if (att) printf " — %d need attention: %s", att, s
+  else printf " — %sall clean and pushed ✓%s", G, RST
+  printf "\n"
+}'

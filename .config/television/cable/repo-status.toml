@@ -1,0 +1,38 @@
+[metadata]
+name = "repo-status"
+requirements = ["git", "repo-status"]
+description = """
+Backup pre-flight overview of every git repo under ~/Development.
+
+Each entry shows status chips: ⚠ conflicts, ✗ uncommitted changes, ? untracked,
+↑ commits not on any remote (across ALL branches), ↓ behind upstream, ⚑ stashes,
+∅ branches with no upstream, plus no-remote / gone / detached warnings.
+Repos needing attention sort first. The preview shows the full per-repo report.
+
+Powered by `repo-status` (~/.local/bin/repo-status).
+"""
+
+[source]
+command = "repo-status --list"
+ansi = true
+no_sort = true
+frecency = false
+output = "{strip_ansi|split:   :0}"
+
+[preview]
+command = 'repo-status --detail "{strip_ansi|split:   :0}"'
+
+[keybindings]
+enter = "actions:cd"
+ctrl-e = "actions:edit"
+
+[actions.cd]
+description = "Open a new shell in the selected repository"
+command = 'cd "$HOME/Development/{strip_ansi|split:   :0}" && $SHELL'
+mode = "execute"
+
+[actions.edit]
+description = "Open the repository in your editor"
+command = '${EDITOR:-vim} "$HOME/Development/{strip_ansi|split:   :0}"'
+shell = "bash"
+mode = "execute"
