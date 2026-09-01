@@ -52,3 +52,21 @@ scratchpad/*
 reconciliation-cleanup.py
 scripts/k8s-shell-custom.sh
 .envrc
+
+**/.claude/settings.local.json
+
+# Secrets and machine-local state — never commit (dotfiles repo is public)
+.config/sanity/
+.config/GAMConfig/
+.config/GAMConfig.zip
+.config/rclone/
+.config/dbxcli/
+.config/pgcli/
+.config/1Password/
+.config/raycast/
+.config/zed/conversations/
+.config/tmux/plugins/
+.config/tmux/resurrect/
+.config/fish/functions/notify.fish
+.config/fish/functions/widget.fish
+.config/fish/functions/r3-sync.fish
