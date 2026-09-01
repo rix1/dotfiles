@@ -18,7 +18,7 @@ format = '[$user 🦄 ]($style)'
 disabled = false
 
 [character]
-success_symbol = "[➜](green)"
+success_symbol = "[❯](green)"
 
 # Configure the number of directories to truncate in the current path
 [directory]
