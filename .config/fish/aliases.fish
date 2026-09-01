@@ -24,6 +24,6 @@ alias cs='/Users/rix1/Development/otovo/cloud/scripts/k8s-shell.sh'
 alias wip='git add . && git commit -m "wip"'
 
 alias tree='eza -T'
-
+alias dserve='deno run --allow-net=:3000 --allow-read=. jsr:@std/http/file-server --port 3000 .'
 
 abbr --add djl djlint --reformat
