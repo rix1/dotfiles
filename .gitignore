@@ -73,3 +73,10 @@ scripts/k8s-shell-custom.sh
 .config/fish/functions/notify.fish
 .config/fish/functions/widget.fish
 .config/fish/functions/r3-sync.fish
+.config/gcloud/
+.config/stripe/
+.config/op/
+.config/github-copilot/
+.config/litecli/
+.config/opencode/
+.claude/
