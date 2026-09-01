@@ -1,4 +1,9 @@
 {
+  "icon_theme": {
+    "mode": "dark",
+    "light": "Zed (Default)",
+    "dark": "Zed (Default)"
+  },
   "agent_servers": {
     "codex-acp": {
       "default_config_options": {
@@ -26,6 +31,29 @@
   "git_panel": {
     "dock": "right",
   },
+  "ssh_connections": [
+    {
+      "host": "rikards-imac",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/Users/rix1/Development"
+          ]
+        },
+        {
+          "paths": [
+            "/Users/rix1/Development/family-cal/./"
+          ]
+        },
+        {
+          "paths": [
+            "/Users/rix1/Development/otovo/cloud/./"
+          ]
+        }
+      ]
+    }
+  ],
   "session": {
     "trust_all_worktrees": true,
   },
@@ -33,14 +61,16 @@
   "prettier": {
     "allowed": true,
   },
-  "title_bar": {},
+  "title_bar": {
+    "show_branch_icon": false,
+  },
   "agent_ui_font_size": 12.0,
   "file_scan_exclusions": [
     ".yarn/",
     "cloud/static/leaflet/",
     "cloud/static/fontawesome-full/",
   ],
-  // "file_scan_inclusions": ["./scratchproject-hubspot-deal-mapping.pypad"],
+  // "file_scan_inclusions": ["./scratchpad/"],
   "agent": {
     "tool_permissions": {
       "default": "allow",
@@ -49,10 +79,10 @@
     "use_modifier_to_send": true,
     "default_profile": "write",
     "default_model": {
-      "effort": "medium",
+      "effort": "high",
       "enable_thinking": true,
-      "provider": "openai",
-      "model": "gpt-5.5",
+      "provider": "zed.dev",
+      "model": "claude-sonnet-4-6",
     },
   },
   "edit_predictions": {
@@ -66,9 +96,9 @@
   "ui_font_family": "iA Writer Mono S",
   "buffer_font_family": "iA Writer Mono V",
   "theme": {
-    "mode": "system",
-    "light": "One Light",
-    "dark": "One Dark",
+    "mode": "dark",
+    "light": "Catppuccin Latte",
+    "dark": "Snazzy Theme - blurred",
   },
   "file_types": {
     "HTML": ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2"],
