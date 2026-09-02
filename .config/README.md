@@ -107,3 +107,55 @@ set -gx LLM_COUNT_CODEX_ICON "O"
 
 Keep these as regular terminal-renderable characters. Icon-font fallback in
 Ghostty was avoided because web icon fonts can break terminal text rendering.
+
+## Fish
+
+Custom commands live in `~/.config/fish/functions/`, with tab completions in
+`~/.config/fish/completions/`. Helper scripts they depend on live in
+`~/.config/bin/`.
+
+### yt-transcript
+
+Downloads the captions of a YouTube video and prints them as plain text, for
+pasting into an LLM conversation or saving as notes.
+
+```fish
+yt-transcript --llm 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' | pbcopy
+yt-transcript -l nb -o talk.txt https://youtu.be/dQw4w9WgXcQ
+yt-transcript --list 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+```
+
+Quote URLs that contain `?`: fish 3.x treats `?` as a wildcard (the
+`qmark-noglob` feature flag turns that off, `set -U fish_features qmark-noglob`).
+
+Options:
+
+- `-l, --lang LANG`: caption language code, default `en`. yt-dlp names
+  auto-caption tracks inconsistently: the spoken-language track is often
+  `en-orig`, and translations are either plain codes (`no`) or
+  `<target>-<source>` (`en-no`). The pattern therefore matches `LANG`,
+  `LANG-orig` and `LANG-<source>`, preferring the original, then the exact
+  code. A track other than `LANG` is reported on stderr. yt-dlp regex syntax
+  is accepted.
+- `-o, --output FILE`: write to a file instead of stdout.
+- `--llm`: prepend a preamble with title, channel, publish date, duration,
+  URL, caption source (uploader subtitles or auto-generated), download date
+  and chapters, and wrap the text in `--- BEGIN/END TRANSCRIPT ---` markers.
+- `--no-timestamps`: drop the per-minute `[m:ss]` markers.
+- `--list`: show the caption languages yt-dlp can see for the video.
+
+How it works:
+
+- `yt-dlp --skip-download --write-subs --write-auto-subs --sub-format vtt
+  --write-info-json` fetches the VTT and metadata into a temp dir. Uploader
+  subtitles win over auto-generated captions for the same language.
+- `~/.config/bin/vtt2text.py` (Python, stdlib only) removes YouTube's rolling
+  duplicate lines and inline timing tags, decodes HTML entities, and groups
+  the text into one paragraph per minute of video. It works on any `.vtt`
+  file on its own:
+
+```fish
+python3 ~/.config/bin/vtt2text.py --llm --info video.info.json video.en.vtt
+```
+
+Requires `yt-dlp` and `python3` (`brew install yt-dlp`).
