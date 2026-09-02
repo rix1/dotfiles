@@ -79,4 +79,6 @@ scripts/k8s-shell-custom.sh
 .config/github-copilot/
 .config/litecli/
 .config/opencode/
-.claude/
+# Claude Code: only the skills are tracked; the rest is state or secrets
+.claude/*
+!.claude/skills/
