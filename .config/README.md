@@ -45,11 +45,9 @@ Restore expectations:
 - Arbitrary long-running commands are not guaranteed to restart unless `tmux-resurrect` knows how to restore that process.
 - Shell command history is separate from pane contents and is handled by the shell, not by resurrect.
 
-Dotfiles follow-up:
-
-- Mirror `tmux/tmux.conf`.
-- Decide whether plugin directories should be committed, bootstrapped by TPM, or installed by a dotfiles script.
-- Ensure `~/.config/tmux/resurrect` is treated as machine-local state, not shared dotfile state.
+Plugins are not committed. `dotfiles-setup` (`conf setup`) clones TPM and
+installs the plugins listed in `tmux.conf`; `~/.config/tmux/resurrect` is
+machine-local state and stays untracked.
 
 ## Starship
 
@@ -82,13 +80,10 @@ The glyphs are set in `~/.config/fish/config.fish` through
 `LLM_COUNT_CLAUDE_ICON` / `LLM_COUNT_CODEX_ICON`, and Ghostty maps the
 codepoint range to the font with
 `font-codepoint-map = U+F8000-U+F80FF=LLM Logos` in its config
-(`~/Library/Application Support/com.mitchellh.ghostty/config`). The font is
-just three glyphs, so any machine that displays the prompt (i.e. the one
-running Ghostty, also when SSHing into another) needs it installed:
-
-```fish
-cp ~/.config/fonts/LLMLogos.otf ~/Library/Fonts/
-```
+(`~/Library/Application Support/com.mitchellh.ghostty/config`). Any machine that
+displays the prompt (the one running Ghostty, also when SSHing into another)
+needs the font installed and the Ghostty line present; `dotfiles-setup`
+(`conf setup`) does both.
 
 See the "Fonts" section below for how the font is built. The old text fallbacks
 were `✻` (Claude) and the Nerd Font robot `󰚩` (Codex); set the env vars to
@@ -107,7 +102,9 @@ The Rust source and Python fallback live at:
 ~/.config/bin/llm-conversation-count.py
 ```
 
-Rebuild after changing the Rust source:
+Rebuild after changing the Rust source (`dotfiles-setup` does this whenever
+the source is newer than the binary, and links the Python fallback when
+there is no `rustc`):
 
 ```fish
 rustc -O ~/.config/src/llm-conversation-count.rs -o ~/.config/bin/llm-conversation-count
@@ -195,11 +192,10 @@ the same logo at ~2x, centred in the full line height, split down the middle
 with skia-pathops so each half is clipped to its own cell and nothing relies
 on the terminal drawing outside a cell.
 
-Rebuild after changing the SVGs or the sizing:
+Rebuild after changing the SVGs or the sizing, then `conf setup` installs it:
 
 ```fish
 uv run --with fonttools --with skia-pathops python ~/.config/fonts/build-llm-logos.py ~/.config/fonts/LLMLogos.otf ~/.config/fonts/simple-icons
-cp ~/.config/fonts/LLMLogos.otf ~/Library/Fonts/
 ```
 
 Ghostty picks up new fonts in new windows/tabs. `ghostty +list-fonts

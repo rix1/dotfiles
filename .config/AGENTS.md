@@ -56,18 +56,53 @@ passphrase), so always pass `--no-gpg-sign`.
 
 Ask "would the other machine want this line?" If yes, it is `main`.
 
+## Day to day: `conf sync` and `conf setup`
+
+Getting shared changes onto a machine is one command:
+
+```sh
+conf sync              # fetch, rebase this machine's branch onto origin/main, push, then conf setup
+conf sync --dry-run    # only say what would happen
+```
+
+`conf sync` runs `~/.local/bin/dotfiles-sync`. It rebases in a temporary
+linked worktree, moves the branch pointer, and then updates `$HOME` with
+git's two-tree merge: only files that changed on `main` are written, local
+edits to other files are kept, and a local edit to a file `main` also
+changed aborts the whole run with nothing touched. Files `main` stopped
+tracking that you have edited locally (`fish_variables`) stay on disk and
+become untracked. Overlay commits that conflict only because `main` deleted
+a file are resolved by keeping the deletion; any other conflict aborts and
+tells you. It is idempotent and pushes with `--force-with-lease`.
+
+`conf setup` runs `~/.local/bin/dotfiles-setup`, the per-machine
+provisioning: fish >= 4, fisher plugins from `fish_plugins`, tpm and the tmux
+plugins, fonts from `~/.config/fonts` into `~/Library/Fonts`, the Ghostty
+`font-codepoint-map` line, the Starship counter binary, and a list of missing
+CLI tools (reported, never installed). Every step checks before acting, so
+run it whenever.
+
+Fresh machine, before the scripts exist locally:
+
+```sh
+git clone --bare https://github.com/rix1/dotfiles ~/.dotfiles
+alias conf='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+conf config status.showUntrackedFiles no
+conf checkout imac              # this machine's branch; for a new machine: conf checkout -b <name> main
+~/.local/bin/dotfiles-sync      # from then on: conf sync
+```
+
 ## Committing to `main` from a machine
 
 `$HOME` has the machine branch checked out. **Do not `conf checkout main` in
 `$HOME`.** That rewrites live files (Zed's prompt database, AeroSpace config,
 `starship.toml`) underneath the programs using them, and deletes anything
-only the machine branch tracks.
-
-A `conf rebase` in `$HOME` does the same thing for a moment, so don't do that
-either. Use a linked worktree for both steps:
+only the machine branch tracks. A `conf rebase` in `$HOME` does the same
+thing for a moment. Commit through a linked worktree instead, then let
+`conf sync` put the machine branch back on top:
 
 ```sh
-W=/tmp/dotfiles-main
+W=$(mktemp -d)/main
 conf fetch
 conf branch -f main origin/main                    # main is never checked out in $HOME, so this is safe
 conf worktree add $W main
@@ -75,41 +110,12 @@ rsync -R .config/path/to/changed-file $W/          # copy the changed files in, 
 git -C $W add .config/path/to/changed-file
 git -C $W commit --no-gpg-sign -m "scope: what changed"
 git -C $W push origin main
-```
-
-Then rebase the machine branch (`mbp` here, `imac` there) without touching
-`$HOME`:
-
-```sh
-BRANCH=mbp
-git -C $W checkout -b rebase-tmp $BRANCH
-git -C $W -c commit.gpgsign=false rebase main      # rebase re-creates commits, so it would try to sign
-conf update-ref refs/heads/$BRANCH rebase-tmp      # move the branch pointer
-conf reset -q                                      # resync the index in $HOME (mixed reset, no file changes)
 conf worktree remove --force $W
-conf branch -D rebase-tmp
-conf push --force-with-lease origin $BRANCH
+conf sync
 ```
 
-`conf status` should afterwards show the same thing it showed before, except
-that the shared change is now committed. On the other machine, skip the
-commit block and run just the fetch, `branch -f`, `worktree add` and the
-rebase block for its own branch.
-
-Expect one recurring conflict: `main` stopped tracking
-`.config/fish/fish_variables` (see below) while older overlay commits still
-modify it. Resolve each one by keeping the deletion:
-
-```sh
-git -C $W rm -q .config/fish/fish_variables
-GIT_EDITOR=true git -C $W -c commit.gpgsign=false rebase --continue
-```
-
-Overlay commits that duplicate something `main` did in the meantime become
-empty and are dropped automatically; if `--continue` complains that a
-commit is empty, `rebase --skip` it. Verified on 2026-09-02: rebasing
-`origin/imac` onto `main` hits this twice and ends with three overlay
-commits.
+`conf status` shows the same thing before and after, minus the change that
+is now committed.
 
 ## Seeing all branches
 

@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# dotfiles-setup — idempotent per-machine provisioning for the dotfiles.
+#
+#   dotfiles-setup             check every step, fix what is missing
+#   dotfiles-setup --dry-run   only report
+#
+# Run it after `dotfiles-sync` (which does so automatically) or any time; every
+# step looks before it acts, so a second run is a no-op. Steps:
+#
+#   fish        >= 4 via Homebrew
+#   fisher      plugins installed as listed in ~/.config/fish/fish_plugins
+#   tmux        tpm cloned, plugins from tmux.conf installed
+#   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
+#   ghostty     font-codepoint-map line for the LLM logo glyphs
+#   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
+#   tools       report CLI tools that are missing (never installs them)
+
+set -uo pipefail
+
+DRY=0
+case ${1:-} in
+  --dry-run) DRY=1 ;;
+  -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "dotfiles-setup: unknown option: $1" >&2; exit 2 ;;
+esac
+
+H=${HOME_OVERRIDE:-$HOME}
+CFG=$H/.config
+changed=0
+
+hdr()  { printf '\n%s\n' "$*"; }
+ok()   { printf '  ✓ %s\n' "$*"; }
+skip() { printf '  · %s\n' "$*"; }
+act()  { changed=1; if (( DRY )); then printf '  → would %s\n' "$*"; else printf '  → %s\n' "$*"; fi; }
+run()  { (( DRY )) || "$@"; }
+
+# ---------------------------------------------------------------- fish
+hdr "fish"
+if command -v fish >/dev/null; then
+  v=$(fish --version | awk '{print $NF}')
+  if (( ${v%%.*} >= 4 )); then ok "fish $v"
+  elif command -v brew >/dev/null; then act "upgrade fish $v → 4.x (brew)"; run brew upgrade fish
+  else skip "fish $v and no Homebrew; upgrade by hand"; fi
+else
+  skip "fish not installed (brew install fish)"
+fi
+
+# ---------------------------------------------------------------- fisher
+hdr "fisher plugins"
+PLUGINS=$CFG/fish/fish_plugins
+if [[ -f $PLUGINS ]] && command -v fish >/dev/null && fish -c 'type -q fisher' 2>/dev/null; then
+  want=$(sort "$PLUGINS"); have=$(fish -c 'fisher list' 2>/dev/null | sort)
+  if [[ $want == "$have" ]]; then ok "in sync with fish_plugins ($(wc -l < "$PLUGINS" | tr -d ' ') plugins)"
+  else act "fisher update (installs everything in fish_plugins)"; run fish -c 'fisher update'; fi
+else
+  skip "fisher not available yet (it ships in the dotfiles; open a new fish shell and rerun)"
+fi
+
+# ---------------------------------------------------------------- tmux
+hdr "tmux plugins"
+TPM=$CFG/tmux/plugins/tpm
+if command -v tmux >/dev/null; then
+  if [[ -d $TPM ]]; then ok "tpm present"
+  else act "clone tpm"; run git clone -q https://github.com/tmux-plugins/tpm "$TPM"; fi
+  missing=0
+  for p in $(sed -n "s/^set -g @plugin 'tmux-plugins\/\([^']*\)'.*/\1/p" "$CFG/tmux/tmux.conf" 2>/dev/null); do
+    [[ $p == tpm ]] && continue
+    if [[ -d $CFG/tmux/plugins/$p ]]; then ok "$p"; else missing=1; fi
+  done
+  if (( missing )); then act "install tmux plugins listed in tmux.conf"; run "$TPM/bin/install_plugins" >/dev/null; fi
+else
+  skip "tmux not installed (brew install tmux)"
+fi
+
+# ---------------------------------------------------------------- fonts
+hdr "fonts"
+shopt -s nullglob
+for src in "$CFG"/fonts/*.otf "$CFG"/fonts/*.ttf; do
+  dst=$H/Library/Fonts/$(basename "$src")
+  if cmp -s "$src" "$dst"; then ok "$(basename "$src") installed"
+  else act "install $(basename "$src") → ~/Library/Fonts"; run mkdir -p "$H/Library/Fonts"; run cp "$src" "$dst"; fi
+done
+shopt -u nullglob
+
+# ---------------------------------------------------------------- ghostty
+hdr "ghostty"
+GC="$H/Library/Application Support/com.mitchellh.ghostty/config"
+LINE='font-codepoint-map = U+F8000-U+F80FF=LLM Logos'
+if [[ -d /Applications/Ghostty.app ]] || command -v ghostty >/dev/null; then
+  if [[ -f $GC ]] && grep -qxF "$LINE" "$GC"; then ok "font-codepoint-map for LLM Logos"
+  else
+    act "append font-codepoint-map to Ghostty config"
+    if ! (( DRY )); then
+      mkdir -p "$(dirname "$GC")"
+      printf '\n# LLM logo glyphs for the Starship conversation counter (added by dotfiles-setup)\n%s\n' "$LINE" >> "$GC"
+    fi
+  fi
+else
+  skip "Ghostty not installed"
+fi
+
+# ---------------------------------------------------------------- starship counter
+hdr "llm-conversation-count"
+BIN=$CFG/bin/llm-conversation-count
+SRC=$CFG/src/llm-conversation-count.rs
+if [[ -x $BIN && ! -L $BIN && $BIN -nt $SRC ]]; then ok "binary newer than source"
+elif command -v rustc >/dev/null; then act "build with rustc -O"; run rustc -O "$SRC" -o "$BIN" 2>/dev/null
+elif [[ -x $BIN ]]; then skip "no rustc; keeping the existing $(basename "$(readlink "$BIN" || echo binary)")"
+else act "no rustc: link the Python fallback"; run ln -sf llm-conversation-count.py "$BIN"; fi
+
+# ---------------------------------------------------------------- tools
+hdr "tools"
+missing=()
+for t in starship tv bat fd eza rg delta direnv tmux gh jq yt-dlp uv; do
+  command -v "$t" >/dev/null || missing+=("$t")
+done
+if (( ${#missing[@]} )); then
+  skip "missing: ${missing[*]}"
+  skip "brew install ${missing[*]//delta/git-delta}"
+else
+  ok "all expected CLI tools present"
+fi
+
+echo
+if (( changed )); then
+  (( DRY )) && echo "dry run: changes pending" || echo "done: some steps changed things (open a new terminal for fonts and fish)"
+else
+  echo "nothing to do"
+fi

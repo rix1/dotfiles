@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# dotfiles-sync — put this machine's dotfiles branch back on top of origin/main.
+#
+#   dotfiles-sync              fetch, rebase the machine branch, push, run dotfiles-setup
+#   dotfiles-sync --dry-run    say what would happen and stop
+#   dotfiles-sync --no-push    rebase locally, don't push
+#   dotfiles-sync --no-setup   don't run dotfiles-setup afterwards
+#
+# Idempotent: when the branch already sits on origin/main nothing is rewritten.
+# $HOME's files are never touched: the rebase happens in a temporary linked
+# worktree and only the branch pointer and the index are updated afterwards.
+# Conflicts where main deleted a file that an overlay commit still edits
+# (fish_variables, hosts.yml, ...) are resolved by keeping the deletion; any
+# other conflict aborts and leaves everything as it was.
+#
+# Env: DOTFILES_GIT_DIR (~/.dotfiles), DOTFILES_WORK_TREE ($HOME), DOTFILES_BASE (main)
+
+set -euo pipefail
+
+GIT_DIR_=${DOTFILES_GIT_DIR:-$HOME/.dotfiles}
+WORK_TREE=${DOTFILES_WORK_TREE:-$HOME}
+BASE=${DOTFILES_BASE:-main}
+DRY=0 PUSH=1 SETUP=1
+
+for arg in "$@"; do
+  case $arg in
+    --dry-run)  DRY=1 ;;
+    --no-push)  PUSH=0 ;;
+    --no-setup) SETUP=0 ;;
+    -h|--help)  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "dotfiles-sync: unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+
+g() { git --git-dir="$GIT_DIR_" --work-tree="$WORK_TREE" "$@"; }
+die() { echo "dotfiles-sync: $*" >&2; exit 1; }
+say() { printf '%s\n' "$*"; }
+
+[[ -d $GIT_DIR_ ]] || die "no dotfiles repo at $GIT_DIR_"
+cd "$WORK_TREE" || die "cannot cd to $WORK_TREE"   # pathspecs below are relative to the work tree root
+BRANCH=$(g symbolic-ref --short HEAD 2>/dev/null) || die "HEAD is detached; check out your machine branch first"
+[[ $BRANCH != "$BASE" ]] || die "HEAD is on $BASE; this script rebases a machine branch (mbp, imac) onto it"
+
+# A repo made with `git clone --bare` has no remote-tracking refspec, so origin/*
+# would never exist. Give it the standard one.
+if ! g config --get remote.origin.fetch >/dev/null; then
+  g config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+fi
+g fetch -q origin || die "fetch failed"
+g rev-parse -q --verify "refs/remotes/origin/$BASE" >/dev/null || die "origin/$BASE does not exist"
+
+# Keep the local base branch equal to origin's. It is never checked out, so a
+# forced update is safe — unless someone committed to it locally and never pushed.
+if g rev-parse -q --verify "refs/heads/$BASE" >/dev/null; then
+  g merge-base --is-ancestor "$BASE" "origin/$BASE" \
+    || die "local $BASE has commits that are not on origin/$BASE; push or drop them first"
+fi
+(( DRY )) || g branch -q -f "$BASE" "origin/$BASE"
+
+OLD=$(g rev-parse "$BRANCH")
+EXPECT=$(g rev-parse -q --verify "refs/remotes/origin/$BRANCH" 2>/dev/null || true)
+NEW_ON_BASE=$(g rev-list --count "$BRANCH..origin/$BASE")
+MB=$(g merge-base "origin/$BASE" "$BRANCH")
+OVERLAY=$(g rev-list --count "$MB..$BRANCH")
+
+if g merge-base --is-ancestor "origin/$BASE" "$BRANCH"; then
+  say "✓ $BRANCH is already on top of origin/$BASE ($(g rev-parse --short "origin/$BASE"), $OVERLAY overlay commits)"
+else
+  say "→ $BRANCH: $OVERLAY overlay commits, origin/$BASE has $NEW_ON_BASE new commits"
+  g log --format='    + %h %s' "$BRANCH..origin/$BASE"
+  if (( DRY )); then
+    say "  (dry run) would rebase $BRANCH onto origin/$BASE${PUSH:+ and push with --force-with-lease}"
+    exit 0
+  fi
+
+  W=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-sync.XXXXXX")
+  TMPBRANCH="sync-tmp-$$"
+  cleanup() {
+    g worktree remove --force "$W" >/dev/null 2>&1 || rm -rf "$W"
+    g branch -q -D "$TMPBRANCH" >/dev/null 2>&1 || true
+    g worktree prune >/dev/null 2>&1 || true
+  }
+  trap cleanup EXIT
+  rmdir "$W"
+  g worktree add -q "$W" -b "$TMPBRANCH" "$BRANCH"
+  wg() { git -C "$W" -c commit.gpgsign=false "$@"; }
+  WGD=$(git -C "$W" rev-parse --absolute-git-dir)
+
+  if ! wg rebase -q "$BASE" >/dev/null 2>&1; then
+    rounds=0
+    while [[ -d $WGD/rebase-merge || -d $WGD/rebase-apply ]]; do
+      (( ++rounds > 50 )) && { wg rebase --abort; die "gave up after 50 conflict rounds"; }
+      mapfile -t unmerged < <(wg diff --name-only --diff-filter=U)
+      if (( ${#unmerged[@]} )); then
+        for f in "${unmerged[@]}"; do
+          # Stage 2 is main's side. No stage 2 means main deleted the file: keep that.
+          if wg ls-files --stage -- "$f" | awk '{print $3}' | grep -qx 2; then
+            wg rebase --abort
+            die "conflict in $f that is not a delete-on-$BASE case; rebase $BRANCH by hand (see ~/.config/AGENTS.md)"
+          fi
+          say "  · $f: deleted on $BASE, dropping the overlay's edit"
+          wg rm -q -- "$f"
+        done
+      fi
+      if ! GIT_EDITOR=true wg rebase --continue >/dev/null 2>&1; then
+        # The commit became empty after the resolution.
+        GIT_EDITOR=true wg rebase --skip >/dev/null 2>&1 || true
+      fi
+    done
+  fi
+
+  NEW=$(wg rev-parse HEAD)
+
+  # Bring $WORK_TREE from OLD to NEW with git's two-tree merge: only files that
+  # differ between the two commits are written, local edits to other files are
+  # kept, and a local edit to a file that also changed upstream aborts cleanly.
+  # Pass 1, no mutations: a file NEW adds that already exists here with other content.
+  while IFS= read -r f; do
+    [[ -n $f && -e $WORK_TREE/$f ]] || continue
+    cmp -s "$WORK_TREE/$f" <(g show "$NEW:$f") \
+      || die "$f exists locally with different content than origin/$BASE adds; move it away and rerun"
+  done < <(g diff --name-only --diff-filter=A "$OLD" "$NEW")
+  # Pass 2: files that already hold the new content (typically on the machine that
+  # committed them from a worktree) are staged so the merge treats them as done.
+  while IFS= read -r f; do
+    [[ -n $f && -f $WORK_TREE/$f ]] || continue
+    if g cat-file -e "$OLD:$f" 2>/dev/null && g diff --quiet "$OLD" -- "$f"; then continue; fi
+    if cmp -s "$WORK_TREE/$f" <(g show "$NEW:$f"); then g update-index --add -- "$f"; fi
+  done < <(g diff --name-only --diff-filter=AM "$OLD" "$NEW")
+  while IFS= read -r f; do   # files NEW deletes that carry local edits: keep them, untracked
+    [[ -n $f && -e $WORK_TREE/$f ]] || continue
+    if ! g diff --quiet "$OLD" -- "$f"; then
+      say "  · $f: removed on $BASE, keeping your locally edited copy (now untracked)"
+      g update-index --force-remove -- "$f"
+    fi
+  done < <(g diff --name-only --diff-filter=D "$OLD" "$NEW")
+  if ! g read-tree -m -u "$OLD" "$NEW"; then
+    g reset -q
+    die "local edits in files that origin/$BASE also changed (listed above); commit or stash them, then rerun"
+  fi
+  g update-ref "refs/heads/$BRANCH" "$NEW" "$OLD"
+  cleanup; trap - EXIT
+  say "✓ $BRANCH rebased onto origin/$BASE: $(g rev-list --count "$BASE..$BRANCH") overlay commits"
+  g log --format='    %h %s' "$BASE..$BRANCH"
+fi
+
+if (( PUSH )) && ! (( DRY )); then
+  if [[ -n $EXPECT && $EXPECT == "$(g rev-parse "$BRANCH")" ]]; then
+    say "✓ origin/$BRANCH is up to date"
+  else
+    lease=${EXPECT:+"--force-with-lease=refs/heads/$BRANCH:$EXPECT"}
+    g push -q ${lease:---force-with-lease} origin "$BRANCH" && say "✓ pushed $BRANCH"
+  fi
+fi
+
+if (( SETUP )) && ! (( DRY )); then
+  setup="$WORK_TREE/.local/bin/dotfiles-setup"
+  if [[ -x $setup ]]; then say; HOME_OVERRIDE="$WORK_TREE" "$setup"; fi
+fi
