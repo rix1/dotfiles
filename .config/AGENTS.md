@@ -34,7 +34,8 @@ passphrase), so always pass `--no-gpg-sign`.
 ```
 
 - **`main`** holds everything that is the same on every machine: fish
-  functions and config, television, tmux, git, starship, the fonts, this file.
+  functions and config, television, tmux, git, starship, the fonts, the
+  Claude Code skills, this file.
 - **`mbp`** and **`imac`** are *machine overlays*. Each is `main` plus a
   handful of commits with machine-specific values: AeroSpace gaps and borders,
   Zed remote projects and prompt library, the Starship prompt symbol, the
@@ -55,6 +56,16 @@ passphrase), so always pass `--no-gpg-sign`.
 | is machine *state* (caches, plugin checkouts, credentials) | nowhere: leave it untracked |
 
 Ask "would the other machine want this line?" If yes, it is `main`.
+
+## Claude Code skills
+
+User-level skills live in `~/.claude/skills/<name>/SKILL.md`, with optional
+`scripts/` and `reference/` next to it, and are invoked as `/<name>`. They
+are shared configuration, so they go on `main` with the scope `skills`.
+Everything else under `~/.claude` (credentials, history, plugins, settings)
+is state or secrets and stays ignored: `~/.gitignore` has `.claude/*`
+followed by `!.claude/skills/`. Keep personal data (email, hostnames) out of
+skill files; the repo is public.
 
 ## Day to day: `conf sync` and `conf setup`
 
@@ -152,7 +163,7 @@ no borders`.
 ## Commit messages
 
 `scope: Imperative summary`, where scope is the tool (`fish`, `tmux`, `zed`,
-`starship`, `television`, `fonts`, `docs`). Body only when the *why* is not
+`starship`, `television`, `fonts`, `skills`, `docs`). Body only when the *why* is not
 obvious. One logical change per commit.
 
 ## Related docs

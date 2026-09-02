@@ -11,6 +11,7 @@ each machine in sync and provisioned.
 - [tmux](https://github.com/tmux/tmux) with resurrect and continuum
 - [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) settings and snippets
 - git config, and a tiny font with the LLM logos the prompt uses
+- [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills` (`company-governance`, `grill-me`): reusable prompts plus the scripts they need
 - Bare repo with no symlinks for dotfiles 🎉
 
 ![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)
@@ -53,6 +54,7 @@ individual tools do and how to rebuild them is in
 
 ```
 $HOME
+├── .claude/skills/   # Claude Code skills (SKILL.md + scripts); the rest of .claude is ignored
 ├── .config/          # Most config should go here
 │      ├── AGENTS.md  # How the repo works: branches, conf, what to commit where
 │      ├── README.md  # What the tools do
