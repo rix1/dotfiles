@@ -63,39 +63,44 @@ Ask "would the other machine want this line?" If yes, it is `main`.
 and deletes files that only the machine branch tracks, such as
 `fish_variables`, while fish is running.
 
-Use a linked worktree instead:
+A `conf rebase` in `$HOME` does the same thing for a moment, so don't do that
+either. Use a linked worktree for both steps:
 
 ```sh
-conf worktree add /tmp/dotfiles-main main
-cp --parents .config/path/to/changed-file /tmp/dotfiles-main/   # or rsync the files
-git -C /tmp/dotfiles-main add .config/path/to/changed-file
-git -C /tmp/dotfiles-main commit --no-gpg-sign -m "scope: what changed"
-git -C /tmp/dotfiles-main push origin main
+W=/tmp/dotfiles-main
+conf fetch
+conf branch -f main origin/main                    # main is never checked out in $HOME, so this is safe
+conf worktree add $W main
+rsync -R .config/path/to/changed-file $W/          # copy the changed files in, paths preserved
+git -C $W add .config/path/to/changed-file
+git -C $W commit --no-gpg-sign -m "scope: what changed"
+git -C $W push origin main
 ```
 
-Then rebase the machine branch without touching `$HOME` either:
+Then rebase the machine branch (`mbp` here, `imac` there) without touching
+`$HOME`:
 
 ```sh
-git -C /tmp/dotfiles-main checkout -b rebase-tmp mbp
-git -C /tmp/dotfiles-main rebase main
-conf update-ref refs/heads/mbp rebase-tmp         # move the branch pointer
-conf reset -q                                     # resync the index in $HOME (mixed, no file changes)
-conf worktree remove /tmp/dotfiles-main
+BRANCH=mbp
+git -C $W checkout -b rebase-tmp $BRANCH
+git -C $W -c commit.gpgsign=false rebase main      # rebase re-creates commits, so it would try to sign
+conf update-ref refs/heads/$BRANCH rebase-tmp      # move the branch pointer
+conf reset -q                                      # resync the index in $HOME (mixed reset, no file changes)
+conf worktree remove --force $W
 conf branch -D rebase-tmp
-conf push --force-with-lease origin mbp
+conf push --force-with-lease origin $BRANCH
 ```
 
 `conf status` should afterwards show the same thing it showed before, except
-that the shared change is now committed. Note that `cp --parents` is GNU; on
-macOS use `rsync -R` or `mkdir -p` plus `cp`.
+that the shared change is now committed. On the other machine, skip the
+commit block and run just the fetch, `branch -f`, `worktree add` and the
+rebase block for its own branch.
 
-On the *other* machine, after the push:
-
-```sh
-conf fetch
-conf rebase origin/main            # its own branch is checked out there, so a plain rebase is fine
-conf push --force-with-lease
-```
+Note for the iMac: `imac` was last rebased before the January 2026 changes
+to `main` (the Deno installer removal, Zed and fish updates), so its first
+rebase will likely conflict in `zed/settings.json`, `config.fish` and
+`starship.toml`. Resolve by keeping `main`'s version and re-applying only
+the genuinely iMac-specific values.
 
 ## Committing to the machine branch
 
