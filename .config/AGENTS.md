@@ -38,7 +38,7 @@ passphrase), so always pass `--no-gpg-sign`.
 - **`mbp`** and **`imac`** are *machine overlays*. Each is `main` plus a
   handful of commits with machine-specific values: AeroSpace gaps and borders,
   Zed remote projects and prompt library, the Starship prompt symbol, the
-  `imac` SSH helper, `fish_variables`.
+  `imac` SSH helper.
 - The machine branches are **never merged into `main`** and never into each
   other. They are always **rebased on top of `main`**, so that `main..mbp`
   and `main..imac` stay short lists of overrides. Their history is rewritten
@@ -59,9 +59,9 @@ Ask "would the other machine want this line?" If yes, it is `main`.
 ## Committing to `main` from a machine
 
 `$HOME` has the machine branch checked out. **Do not `conf checkout main` in
-`$HOME`.** That rewrites live files (Zed's prompt database, AeroSpace config)
-and deletes files that only the machine branch tracks, such as
-`fish_variables`, while fish is running.
+`$HOME`.** That rewrites live files (Zed's prompt database, AeroSpace config,
+`starship.toml`) underneath the programs using them, and deletes anything
+only the machine branch tracks.
 
 A `conf rebase` in `$HOME` does the same thing for a moment, so don't do that
 either. Use a linked worktree for both steps:
