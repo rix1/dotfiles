@@ -159,6 +159,6 @@ obvious. One logical change per commit.
 
 - `~/.config/README.md`: what the tmux, Starship, fish and font setups do and
   how to rebuild them.
-- `~/.github/README.md`: the public-facing README. Partly stale (it still
-  describes a deleted Deno installer); this file is the current source of
-  truth for the workflow.
+- `~/.github/README.md`: the public-facing README: what is included and how
+  to install on a fresh machine. This file is the source of truth for the
+  workflow.
