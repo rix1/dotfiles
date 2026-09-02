@@ -11,6 +11,12 @@ fzf_configure_bindings --directory=\cf
 # pyenv init - | source
 
 starship init fish | source
+
+# Starship LLM conversation counter icons: private-use glyphs from the
+# "LLM Logos" font (~/.config/fonts, mapped in Ghostty via font-codepoint-map).
+# Two glyphs per logo = a two-cell, 2x-size icon. Single-cell: \U000F8001 / \U000F8002.
+set -gx LLM_COUNT_CLAUDE_ICON \U000F8011\U000F8021
+set -gx LLM_COUNT_CODEX_ICON \U000F8012\U000F8022
 direnv hook fish | source
 
 if test "$TERM" = "xterm-ghostty"
