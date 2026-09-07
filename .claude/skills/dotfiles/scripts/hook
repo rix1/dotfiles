@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# hook — Claude Code hooks that keep dotfiles changes from going uncommitted.
+#
+#   hook prompt   UserPromptSubmit: snapshot `changes --porcelain` for this session
+#   hook stop     Stop: if the snapshot differs from now (a tracked file or a skill
+#                 changed during this turn), block the stop once and ask Claude to run
+#                 the dotfiles skill. Never blocks twice in a row (stop_hook_active),
+#                 never for changes that were already there when the turn started.
+#
+# Registered in ~/.claude/settings.json by dotfiles-setup. Reads the hook JSON on stdin
+# (session_id, stop_hook_active). Always exits 0; a block is expressed as JSON on stdout.
+# State: ~/.cache/dotfiles-hook/<session_id>, removed after 3 days.
+
+set -uo pipefail
+DIR=$(cd "$(dirname "$0")" && pwd)
+STATE=${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-hook
+input=$(cat 2>/dev/null || true)
+
+field() {
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$input" | jq -r --arg k "$1" '.[$k] // empty' 2>/dev/null
+  else
+    printf '%s' "$input" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\{0,1\}\([^\",}]*\)\"\{0,1\}.*/\1/p" | head -1
+  fi
+}
+json_string() {  # escape $1 as a JSON string literal
+  local s=$1
+  s=${s//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; s=${s//$'\t'/\\t}; s=${s//$'\r'/}
+  printf '"%s"' "$s"
+}
+
+[[ -x $DIR/changes && -d ${DOTFILES_GIT_DIR:-$HOME/.dotfiles} ]] || exit 0
+sid=$(field session_id); [[ -n $sid ]] || sid=default
+sid=${sid//[^A-Za-z0-9_-]/_}
+snap=$STATE/$sid
+
+case ${1:-} in
+  prompt)
+    mkdir -p "$STATE" 2>/dev/null || exit 0
+    find "$STATE" -type f -mtime +3 -delete 2>/dev/null
+    if "$DIR/changes" --porcelain > "$snap.tmp" 2>/dev/null; then mv -f "$snap.tmp" "$snap"; else rm -f "$snap.tmp"; fi
+    exit 0 ;;
+  stop)
+    [[ -f $snap ]] || exit 0
+    [[ $(field stop_hook_active) == true ]] && exit 0
+    now=$("$DIR/changes" --porcelain 2>/dev/null) || exit 0
+    new=$(comm -13 "$snap" <(printf '%s\n' "$now") | sed '/^$/d')
+    [[ -n $new ]] || exit 0
+    reason="Dotfiles: these files, tracked by the dotfiles repo or new under ~/.claude/skills, changed during this turn and are not committed:
+$new
+Invoke the dotfiles skill (Skill tool, skill: dotfiles) to review and commit them; it asks the user before pushing. If they should stay uncommitted, tell the user so in one line."
+    printf '{"decision":"block","reason":%s}\n' "$(json_string "$reason")"
+    exit 0 ;;
+  *) exit 0 ;;
+esac

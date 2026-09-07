@@ -13,6 +13,7 @@
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
+#   claude      dotfiles skill hooks (UserPromptSubmit, Stop) registered in ~/.claude/settings.json
 #   tools       report CLI tools that are missing (never installs them)
 
 set -uo pipefail
@@ -20,7 +21,7 @@ set -uo pipefail
 DRY=0
 case ${1:-} in
   --dry-run) DRY=1 ;;
-  -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   "") ;;
   *) echo "dotfiles-setup: unknown option: $1" >&2; exit 2 ;;
 esac
@@ -108,6 +109,36 @@ if [[ -x $BIN && ! -L $BIN && $BIN -nt $SRC ]]; then ok "binary newer than sourc
 elif command -v rustc >/dev/null; then act "build with rustc -O"; run rustc -O "$SRC" -o "$BIN" 2>/dev/null
 elif [[ -x $BIN ]]; then skip "no rustc; keeping the existing $(basename "$(readlink "$BIN" || echo binary)")"
 else act "no rustc: link the Python fallback"; run ln -sf llm-conversation-count.py "$BIN"; fi
+
+# ---------------------------------------------------------------- claude code hooks
+hdr "claude code hooks"
+SETTINGS=$H/.claude/settings.json
+HOOK=$H/.claude/skills/dotfiles/scripts/hook
+if [[ ! -x $HOOK ]]; then skip "no dotfiles skill at ~/.claude/skills/dotfiles"
+elif ! command -v jq >/dev/null; then skip "jq missing; register the hooks by hand (see ~/.claude/skills/dotfiles/SKILL.md)"
+elif [[ -f $SETTINGS ]] && ! jq -e . "$SETTINGS" >/dev/null 2>&1; then skip "~/.claude/settings.json is not valid JSON; fix it first"
+else
+  if [[ ! -f $SETTINGS ]]; then
+    act "create ~/.claude/settings.json"
+    if ! (( DRY )); then mkdir -p "$(dirname "$SETTINGS")"; echo '{}' > "$SETTINGS"; fi
+  fi
+  for pair in UserPromptSubmit:prompt Stop:stop; do
+    ev=${pair%%:*} sub=${pair##*:}
+    cmd="h=\$HOME/.claude/skills/dotfiles/scripts/hook; [ -x \"\$h\" ] && exec \"\$h\" $sub; exit 0"
+    if [[ -f $SETTINGS ]] && jq -e --arg ev "$ev" \
+         '[.hooks[$ev][]?.hooks[]?.command // "" | select(contains("skills/dotfiles/scripts/hook"))] | length > 0' \
+         "$SETTINGS" >/dev/null 2>&1; then
+      ok "$ev hook registered"
+    else
+      act "register $ev hook in ~/.claude/settings.json"
+      if ! (( DRY )); then
+        tmp=$(mktemp) && jq --arg ev "$ev" --arg cmd "$cmd" \
+          '.hooks //= {} | .hooks[$ev] //= [] | .hooks[$ev] += [{hooks: [{type: "command", command: $cmd, timeout: 20}]}]' \
+          "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+      fi
+    fi
+  done
+fi
 
 # ---------------------------------------------------------------- tools
 hdr "tools"

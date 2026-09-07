@@ -11,7 +11,7 @@ each machine in sync and provisioned.
 - [tmux](https://github.com/tmux/tmux) with resurrect and continuum
 - [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) settings and snippets
 - git config, and a tiny font with the LLM logos the prompt uses
-- [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills` (`company-governance`, `grill-me`): reusable prompts plus the scripts they need
+- [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills` (`company-governance`, `dotfiles`, `grill-me`): reusable prompts plus the scripts they need
 - Bare repo with no symlinks for dotfiles 🎉
 
 ![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)

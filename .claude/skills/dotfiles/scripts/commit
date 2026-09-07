@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# commit — commit dotfiles changes to the right branch without touching $HOME's checkout.
+#
+#   commit --to main    -m "scope: Summary" [-m "body"]... -- <path>...
+#   commit --to machine -m "scope: Summary" [-m "body"]... -- <path>...
+#
+#   --to main       fetch, fast-forward local main to origin/main, check it out in a
+#                   temporary linked worktree, copy the named paths in (deletions too),
+#                   commit, push, remove the worktree, then dotfiles-sync --no-setup so
+#                   the machine branch sits on top of the new main again. Refuses files
+#                   that are part of this machine's overlay (they differ between main
+#                   and HEAD) unless --allow-overlay; when a directory is passed, files
+#                   that only the machine branch tracks are left out.
+#   --to machine    conf add -A -- <paths>, commit, then dotfiles-sync --no-setup
+#                   (which pushes with --force-with-lease).
+#   --no-push       commit only: no push, no sync
+#   --setup         run dotfiles-setup after the sync (fish_plugins, fonts, tmux plugins)
+#   -F <file>       commit message from a file instead of -m
+#
+# Paths are relative to $HOME (absolute paths under $HOME are accepted). Commits are
+# made with commit.gpgsign=false. Env: DOTFILES_GIT_DIR, DOTFILES_WORK_TREE, DOTFILES_BASE.
+
+set -euo pipefail
+
+GIT_DIR_=${DOTFILES_GIT_DIR:-$HOME/.dotfiles}
+WORK_TREE=${DOTFILES_WORK_TREE:-$HOME}
+BASE=${DOTFILES_BASE:-main}
+TO="" PUSH=1 SETUP=0 ALLOW_OVERLAY=0
+MSG=() PATHS=()
+
+usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+die() { echo "commit: $*" >&2; exit 1; }
+say() { printf '%s\n' "$*"; }
+
+while (( $# )); do
+  case $1 in
+    --to) TO=${2:-}; shift 2 ;;
+    --to=*) TO=${1#--to=}; shift ;;
+    -m) MSG+=(-m "${2:-}"); shift 2 ;;
+    -F) f=${2:-}; [[ $f == /* ]] || f=$PWD/$f; MSG+=(-F "$f"); shift 2 ;;
+    --no-push) PUSH=0; shift ;;
+    --setup) SETUP=1; shift ;;
+    --allow-overlay) ALLOW_OVERLAY=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    --) shift; PATHS+=("$@"); break ;;
+    -*) die "unknown option: $1 (see --help)" ;;
+    *) PATHS+=("$1"); shift ;;
+  esac
+done
+
+[[ $TO == main || $TO == machine ]] || die "--to main or --to machine is required"
+(( ${#MSG[@]} )) || die "a commit message is required (-m or -F)"
+(( ${#PATHS[@]} )) || die "no paths given"
+[[ -d $GIT_DIR_ ]] || die "no dotfiles repo at $GIT_DIR_"
+cd "$WORK_TREE" || die "cannot cd to $WORK_TREE"
+
+g() { git --git-dir="$GIT_DIR_" --work-tree="$WORK_TREE" "$@"; }
+BRANCH=$(g symbolic-ref --short HEAD 2>/dev/null) || die "HEAD is detached; check out your machine branch first"
+[[ $BRANCH != "$BASE" ]] || die "$BASE is checked out in $WORK_TREE; this workflow expects a machine branch (mbp, imac)"
+
+rel=()
+for p in "${PATHS[@]}"; do
+  if [[ $p == /* ]]; then [[ $p == "$WORK_TREE"/* ]] || die "$p is outside $WORK_TREE"; p=${p#"$WORK_TREE"/}; fi
+  p=${p#./}; p=${p%/}
+  [[ -n $p && $p != . && $p != .. && $p != ../* && $p != */../* && $p != */.. ]] || die "refusing path: ${p:-<empty>}"
+  rel+=("$p")
+done
+
+run_sync() {
+  (( PUSH )) || return 0
+  local sync=$WORK_TREE/.local/bin/dotfiles-sync
+  if [[ -x $sync ]]; then
+    if (( SETUP )); then "$sync"; else "$sync" --no-setup; fi
+  else
+    say "· dotfiles-sync not found; run conf sync"
+  fi
+}
+
+if [[ $TO == main ]]; then
+  g config --get remote.origin.fetch >/dev/null || g config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+  g fetch -q origin || die "fetch failed"
+  g rev-parse -q --verify "refs/remotes/origin/$BASE" >/dev/null || die "origin/$BASE does not exist"
+  if g rev-parse -q --verify "refs/heads/$BASE" >/dev/null && ! g merge-base --is-ancestor "$BASE" "origin/$BASE"; then
+    die "local $BASE has commits that are not on origin/$BASE; push them (conf push origin $BASE) or drop them first"
+  fi
+  g branch -q -f "$BASE" "origin/$BASE"
+
+  # Overlay files differ between main and this machine's branch. Committing one to
+  # main from $HOME would carry the machine-specific lines with it.
+  overlay=$(g diff --name-only "origin/$BASE" HEAD)
+  for p in "${rel[@]}"; do
+    while IFS= read -r f; do
+      [[ -n $f ]] || continue
+      [[ $f == "$p" || $f == "$p"/* ]] || continue
+      if g cat-file -e "origin/$BASE:$f" 2>/dev/null && ! (( ALLOW_OVERLAY )); then
+        die "$f is an overlay file (differs between $BASE and $BRANCH). Committing it to $BASE would move this machine's lines onto $BASE. Use --to machine, or --allow-overlay if the whole file really belongs on $BASE."
+      fi
+    done <<< "$overlay"
+  done
+
+  D=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-commit.XXXXXX"); W=$D/$BASE
+  cleanup() { g worktree remove --force "$W" >/dev/null 2>&1 || rm -rf "$W"; rm -rf "$D"; g worktree prune >/dev/null 2>&1 || true; }
+  trap cleanup EXIT
+  g worktree prune >/dev/null 2>&1 || true
+  g worktree add -q "$W" "$BASE" || die "could not create a worktree for $BASE"
+  wg() { git -C "$W" -c commit.gpgsign=false "$@"; }
+
+  for p in "${rel[@]}"; do
+    if [[ -e $p ]]; then
+      rm -rf "${W:?}/$p"
+      tar -C "$WORK_TREE" -cf - --exclude .DS_Store -- "$p" | tar -C "$W" -xf -
+      # A directory may contain files only the machine branch tracks; keep them off main.
+      while IFS= read -r f; do
+        [[ -n $f && $f != "$p" ]] || continue
+        if ! g cat-file -e "origin/$BASE:$f" 2>/dev/null; then
+          say "  · $f: tracked only on $BRANCH, not added to $BASE"
+          rm -f "$W/$f"
+        fi
+      done < <(g ls-tree -r --name-only HEAD -- "$p")
+      wg add -A -- "$p"
+    elif wg ls-files --error-unmatch -- "$p" >/dev/null 2>&1; then
+      wg rm -rq -- "$p"
+    else
+      die "nothing at $p, and $BASE does not track it"
+    fi
+  done
+  wg diff --cached --quiet && die "nothing to commit: ${rel[*]} already match $BASE"
+  say "→ $BASE:"; wg diff --cached --stat | sed 's/^/    /'
+  wg commit -q "${MSG[@]}"
+  say "✓ committed $(wg log -1 --format='%h %s') on $BASE"
+  if (( PUSH )); then
+    wg push -q origin "$BASE" && say "✓ pushed $BASE"
+  else
+    say "· not pushed; local $BASE is ahead of origin/$BASE. Later: conf push origin $BASE && conf sync"
+  fi
+  cleanup; trap - EXIT
+  run_sync
+else
+  g diff --cached --quiet || die "the index already has staged changes; commit or unstage them first (conf status)"
+  g add -A -- "${rel[@]}"
+  g diff --cached --quiet && die "nothing to commit for: ${rel[*]}"
+  say "→ $BRANCH:"; g diff --cached --stat | sed 's/^/    /'
+  g -c commit.gpgsign=false commit -q "${MSG[@]}"
+  say "✓ committed $(g log -1 --format='%h %s') on $BRANCH"
+  (( PUSH )) || say "· not pushed; run conf sync"
+  run_sync
+fi

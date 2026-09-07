@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# changes — what in $HOME differs from the dotfiles repo, and where each change belongs.
+#
+#   changes              report for humans and agents
+#   changes --porcelain  one "XY path" line per change, sorted; used by the Stop hook
+#
+# Three sections:
+#   tracked   files git knows about that are modified or deleted, tagged main or
+#             <machine branch> (the latter when the file differs between origin/main
+#             and HEAD, i.e. it is part of this machine's overlay)
+#   new       untracked files in tracked locations: anything under ~/.claude/skills,
+#             and files directly inside a directory that already has tracked files
+#             (fish functions, television cable, .local/bin, ...). Files at $HOME
+#             root and new directories are not scanned, because scanning $HOME takes
+#             seconds; `conf add` those by hand.
+#   check     lines in the above that look like secrets or personal data
+#
+# Env: DOTFILES_GIT_DIR (~/.dotfiles), DOTFILES_WORK_TREE ($HOME), DOTFILES_BASE (main)
+
+set -uo pipefail
+export LC_ALL=C
+
+GIT_DIR_=${DOTFILES_GIT_DIR:-$HOME/.dotfiles}
+WORK_TREE=${DOTFILES_WORK_TREE:-$HOME}
+BASE=${DOTFILES_BASE:-main}
+PORCELAIN=0
+case ${1:-} in
+  --porcelain) PORCELAIN=1 ;;
+  -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "changes: unknown option: $1" >&2; exit 2 ;;
+esac
+
+g() { git --git-dir="$GIT_DIR_" --work-tree="$WORK_TREE" "$@"; }
+[[ -d $GIT_DIR_ ]] || { echo "changes: no dotfiles repo at $GIT_DIR_" >&2; exit 1; }
+cd "$WORK_TREE" || exit 1
+
+BRANCH=$(g symbolic-ref --short HEAD 2>/dev/null || echo detached)
+if g rev-parse -q --verify "refs/remotes/origin/$BASE" >/dev/null; then UP=origin/$BASE; else UP=$BASE; fi
+
+noise() { case $1 in *.swp|*.swo|*~|.DS_Store|*/.DS_Store) return 0 ;; esac; return 1; }
+
+# ---- tracked: modified or deleted files, and this machine's overlay set
+declare -A OVERLAY=()
+while IFS= read -r f; do [[ -n $f ]] && OVERLAY[$f]=1; done < <(g diff --name-only "$UP" HEAD 2>/dev/null)
+tracked=()
+while IFS= read -r line; do [[ -n $line ]] && tracked+=("$line"); done < <(g status --porcelain=v1 -uno 2>/dev/null | sort)
+
+# ---- new: untracked files in tracked locations
+specs=()
+while IFS= read -r d; do
+  [[ -n $d && $d != . && $d != .claude/skills && $d != .claude/skills/* ]] || continue
+  specs+=(":(glob)$d/*")
+done < <(g ls-files -z | while IFS= read -r -d '' f; do if [[ $f == */* ]]; then printf '%s\n' "${f%/*}"; else echo .; fi; done | sort -u)
+new=()
+while IFS= read -r line; do
+  [[ -n $line ]] || continue
+  noise "${line:3}" && continue
+  new+=("$line")
+done < <({ g status --porcelain=v1 -uall -- .claude/skills
+           if (( ${#specs[@]} )); then g status --porcelain=v1 -unormal -- "${specs[@]}"; fi
+         } 2>/dev/null | grep '^??' | sort -u)
+
+if (( PORCELAIN )); then
+  printf '%s\n' "${tracked[@]}" "${new[@]}" | sed '/^$/d' | sort -u
+  exit 0
+fi
+
+# ---- report
+lr=$(g rev-list --left-right --count "$UP...HEAD" 2>/dev/null || echo "? ?")
+behind=${lr%%[[:space:]]*}; ahead=${lr##*[[:space:]]}
+printf 'dotfiles: %s checked out, %s overlay commits on %s (%s)' "$BRANCH" "$ahead" "$UP" "$(g rev-parse --short "$UP" 2>/dev/null)"
+if [[ $behind =~ ^[0-9]+$ ]] && (( behind > 0 )); then printf '; %s has %s commits this branch lacks: run conf sync' "$UP" "$behind"; fi
+echo; echo
+
+tag() { if [[ -n ${OVERLAY[$1]:-} ]]; then printf '%s (overlay file)' "$BRANCH"; else printf '%s' "$BASE"; fi; }
+
+if (( ${#tracked[@]} )); then
+  echo "Tracked files changed (${#tracked[@]}):"
+  for line in "${tracked[@]}"; do printf '  %s  %-52s → %s\n' "${line:0:2}" "${line:3}" "$(tag "${line:3}")"; done
+else
+  echo "Tracked files changed: none"
+fi
+echo
+
+declare -A tracked_skill=() untracked_skill=()
+while IFS= read -r s; do [[ -n $s ]] && tracked_skill[$s]=1; done < <(g ls-files -- .claude/skills | cut -d/ -f3 | sort -u)
+skill_files=() other_new=()
+for line in "${new[@]}"; do
+  f=${line:3}
+  if [[ $f == .claude/skills/*/* ]]; then
+    s=${f#.claude/skills/}; s=${s%%/*}
+    if [[ -n ${tracked_skill[$s]:-} ]]; then skill_files+=("$f"); else untracked_skill[$s]=$(( ${untracked_skill[$s]:-0} + 1 )); fi
+  elif [[ $f == .claude/skills/* ]]; then skill_files+=("$f")
+  else other_new+=("$f")
+  fi
+done
+
+if (( ${#skill_files[@]} + ${#other_new[@]} )); then
+  echo "New files in tracked locations ($(( ${#skill_files[@]} + ${#other_new[@]} ))):"
+  for f in "${skill_files[@]}"; do printf '  ??  %-52s → %s\n' "$f" "$BASE"; done
+  # Directories with many new files (television cable, installed binaries) get one line.
+  declare -A per_dir=() printed=()
+  for f in "${other_new[@]}"; do d=${f%/*}; per_dir[$d]=$(( ${per_dir[$d]:-0} + 1 )); done
+  for f in "${other_new[@]}"; do
+    d=${f%/*}
+    if (( ${per_dir[$d]} > 5 )); then
+      if [[ -z ${printed[$d]:-} ]]; then printf '  ??  %-52s %s new files; list: conf status -unormal -- %s\n' "$d/" "${per_dir[$d]}" "$d"; printed[$d]=1; fi
+    else
+      printf '  ??  %-52s → %s, or %s if machine-specific\n' "$f" "$BASE" "$BRANCH"
+    fi
+  done
+else
+  echo "New files in tracked locations: none"
+fi
+echo
+if (( ${#untracked_skill[@]} )); then
+  echo "Untracked skills (${#untracked_skill[@]}); installed or synced ones stay untracked, add the ones you wrote:"
+  for s in $(printf '%s\n' "${!untracked_skill[@]}" | sort); do printf '  ??  .claude/skills/%s/ (%s files)\n' "$s" "${untracked_skill[$s]}"; done
+  echo
+fi
+
+# ---- check: secrets and personal data in what would be committed
+scan=()
+for line in "${tracked[@]}"; do [[ ${line:0:2} == *D* ]] || scan+=("${line:3}"); done
+scan+=("${skill_files[@]}" "${other_new[@]}")
+existing=(); for f in "${scan[@]}"; do [[ -f $f ]] && existing+=("$f"); done
+hits=""
+pat='BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|(api[_-]?key|secret|passw(or)?d|token)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_/+=-]{8,}|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+hosts=()
+for h in "$(hostname -s 2>/dev/null)" "$(scutil --get LocalHostName 2>/dev/null)" "$(scutil --get ComputerName 2>/dev/null)"; do
+  [[ -n $h ]] && hosts+=(-e "$h")
+done
+if (( ${#existing[@]} )); then
+  hits=$( { grep -nIHE -- "$pat" "${existing[@]}"
+           if (( ${#hosts[@]} )); then grep -nIHF "${hosts[@]}" -- "${existing[@]}"; fi
+         } 2>/dev/null | sort -u | head -20)
+fi
+# Untracked skill directories get a count per skill, not a flood of lines.
+skill_hits=""
+if (( ${#untracked_skill[@]} )); then
+  for s in $(printf '%s\n' "${!untracked_skill[@]}" | sort); do
+    n=$( { grep -rIE -- "$pat" ".claude/skills/$s"
+           if (( ${#hosts[@]} )); then grep -rIF "${hosts[@]}" -- ".claude/skills/$s"; fi
+         } 2>/dev/null | sort -u | wc -l | tr -d ' ')
+    (( n > 0 )) && skill_hits+="$(printf '  .claude/skills/%s/: %s lines look like secrets, emails or this machine (grep -rnE before adding)' "$s" "$n")"$'\n'
+  done
+fi
+if [[ -n $hits$skill_hits ]]; then
+  echo "Check before committing (looks like a secret, an email or this machine's name):"
+  [[ -n $hits ]] && printf '%s\n' "$hits" | cut -c1-140 | sed 's/^/  /'
+  [[ -n $skill_hits ]] && printf '%s' "$skill_hits"
+  echo
+fi
+echo "Next: ~/.claude/skills/dotfiles/scripts/commit --to main|machine -m 'scope: Summary' -- <paths>"

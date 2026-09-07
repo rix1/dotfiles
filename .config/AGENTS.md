@@ -44,8 +44,8 @@ passphrase), so always pass `--no-gpg-sign`.
   other. They are always **rebased on top of `main`**, so that `main..mbp`
   and `main..imac` stay short lists of overrides. Their history is rewritten
   on every rebase and they are pushed with `--force-with-lease`.
-- Each machine has its own branch checked out in `$HOME`. This machine (the
-  MacBook) is on `mbp`.
+- Each machine has its own branch checked out in `$HOME`; `conf branch
+  --show-current` says which one this is.
 
 ## Where does a change go?
 
@@ -66,6 +66,16 @@ Everything else under `~/.claude` (credentials, history, plugins, settings)
 is state or secrets and stays ignored: `~/.gitignore` has `.claude/*`
 followed by `!.claude/skills/`. Keep personal data (email, hostnames) out of
 skill files; the repo is public.
+
+The `dotfiles` skill (`/dotfiles`, in `~/.claude/skills/dotfiles`) is this
+document as a procedure for agents: `scripts/changes` lists modified tracked
+files and new candidates with the branch each belongs on, and
+`scripts/commit --to main|machine` performs the commits described below.
+`scripts/hook` provides two Claude Code hooks, registered in the machine-local
+`~/.claude/settings.json` by `dotfiles-setup`: `UserPromptSubmit` snapshots
+the repo state at the start of every turn, and `Stop` compares; when tracked
+files or skills changed during the turn without being committed, it makes
+Claude run the skill before it stops. The skill asks before committing.
 
 ## Day to day: `conf sync` and `conf setup`
 
@@ -127,6 +137,8 @@ conf sync
 
 `conf status` shows the same thing before and after, minus the change that
 is now committed.
+`~/.claude/skills/dotfiles/scripts/commit --to main -m "scope: what changed"
+-- <paths>` runs exactly this sequence, and refuses overlay files.
 
 ## Seeing all branches
 
