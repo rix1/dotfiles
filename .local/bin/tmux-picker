@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# tmux-picker — rows, previews and actions for the tmux-picker television channels.
+#
+#   tmux-picker popup CLIENT SESSION:WINDOW [--session]
+#                                   open the picker in a popup on CLIENT (prefix s / prefix w)
+#   tmux-picker pick [--session]    run tv and switch to the pick (what the popup runs)
+#   tmux-picker windows [--session] one row per window; --session limits to the current session
+#   tmux-picker sessions            one row per session (used by `ts`)
+#   tmux-picker preview TARGET      path header plus a colour capture of TARGET's active pane
+#
+# Rows start with an optional ● marker and the tmux target (session or session:window);
+# the channels read the target back with {strip_ansi|regex_extract:[^ ●]+}.
+#
+# Env: TMUX_PICKER_CURRENT  session:window to treat as "here" (default: this pane's)
+#      TMUX_PICKER_COLS     width the rows should fit (default: tput cols, else 120)
+#      TMUX_PICKER_LINES    height of the tv window, used to size the preview (default: tput lines)
+
+set -euo pipefail
+
+cols() { echo "${TMUX_PICKER_COLS:-$(tput cols 2>/dev/null || echo 120)}"; }
+
+current() {
+  if [[ -n ${TMUX_PICKER_CURRENT:-} ]]; then
+    echo "$TMUX_PICKER_CURRENT"
+  elif [[ -n ${TMUX:-} ]]; then
+    tmux display-message -p '#{session_name}:#{window_index}' 2>/dev/null || true
+  fi
+}
+
+# Fields shared by windows and sessions, one line per window, tab-separated.
+list_windows() {
+  local t=$'\t'
+  tmux list-windows "$@" -F "#{session_name}${t}#{window_index}${t}#{session_last_attached}${t}#{window_activity}${t}#{pane_current_command}${t}#{automatic-rename}${t}#{window_name}${t}#{pane_current_path}${t}#{pane_title}"
+}
+
+# Formats list_windows output. $1 = windows|sessions.
+format() {
+  MODE=$1 CUR=$(current) COLS=$(cols) NOW=$(date +%s) HOME_DIR=$HOME perl -CSDA -e '
+    use strict; use warnings; use utf8;
+    my ($mode, $cur, $cols, $now, $home) = @ENV{qw(MODE CUR COLS NOW HOME_DIR)};
+    my ($cur_s, $cur_w) = split /:/, $cur // "", 2;
+    $cur_s //= ""; $cur_w //= "";
+    my ($DIM, $BOLD, $BLUE, $YELLOW, $GREEN, $RST) =
+      ("\e[2m", "\e[1m", "\e[34m", "\e[33m", "\e[32m", "\e[0m");
+
+    sub age { my $s = $now - shift; $s < 0 and $s = 0;
+      $s < 60 ? "now" : $s < 3600 ? int($s/60)."m" : $s < 86400 ? int($s/3600)."h" : int($s/86400)."d" }
+    sub fit { my ($s, $w) = @_; $w < 1 and return "";
+      length($s) > $w ? substr($s, 0, $w - 1) . "…" : $s . " " x ($w - length $s) }
+    # Claude Code shows its version as the command and its task as the pane title.
+    # It redraws a spinner while working and prints nothing while idle, so recent
+    # output means working.
+    sub claude { my ($cmd, $title, $act) = @_;
+      return unless $cmd =~ /^\d+\.\d+\.\d+$/ || $cmd eq "claude";
+      my $idle = $now - $act >= 10;
+      (my $label = $title) =~ s/^\S\s+//;
+      return ($idle ? "idle" : "working", $label) }
+    sub dot { my $st = shift // ""; $st eq "working" ? "$YELLOW●$RST" : $st eq "idle" ? "$GREEN●$RST" : " " }
+
+    my (@wins, %sess);
+    while (<STDIN>) {
+      chomp;
+      my ($s, $i, $attached, $act, $cmd, $auto, $name, $path, $title) = split /\t/, $_, 9;
+      my ($st, $label) = claude($cmd, $title // "", $act);
+      $label //= $auto ? $cmd : $name;
+      (my $dir = $path) =~ s{^\Q$home\E(?=/|$)}{~};
+      $dir = $dir eq "~" ? "~" : ($dir =~ m{([^/]+)/?$})[0] // $dir;
+      my $rank = $s ne $cur_s ? 2 : $i eq $cur_w ? 0 : 1;
+      push @wins, { s => $s, i => $i, attached => $attached, act => $act, st => $st, label => $label, dir => $dir, rank => $rank };
+      my $x = $sess{$s} //= { s => $s, attached => $attached, act => 0, n => 0, st => undef, rank => $s eq $cur_s ? 0 : 2 };
+      $x->{n}++;
+      $x->{act} = $act if $act > $x->{act};
+      $x->{st} = $st if defined $st && ($st eq "working" || !defined $x->{st});
+    }
+    # Here first, then the rest of this session, then other sessions by last attach.
+    my $order = sub { $a->{rank} <=> $b->{rank} || $b->{attached} <=> $a->{attached} || $a->{s} cmp $b->{s} };
+
+    if ($mode eq "windows") {
+      my @rows = sort { $order->() || $a->{i} <=> $b->{i} } @wins;
+      my $tw = 0; for (@rows) { my $l = length("$_->{s}:$_->{i}"); $tw = $l if $l > $tw }
+      my $dw = 0; for (@rows) { $dw = length $_->{dir} if length $_->{dir} > $dw } $dw = 20 if $dw > 20;
+      # marker, target, dot, label, dir, age, plus gaps and tv borders
+      my $lw = $cols - (2 + $tw + 1 + 2 + 2 + $dw + 2 + 4 + 6);
+      $lw = 60 if $lw > 60;
+      for (@rows) {
+        my $mark = $_->{rank} == 0 ? "$BLUE●$RST" : " ";
+        my $target = "$BOLD$_->{s}$RST$DIM:$_->{i}$RST" . " " x ($tw - length "$_->{s}:$_->{i}");
+        printf "%s %s %s %s  %s%s%s  %s%4s%s\n", $mark, $target, dot($_->{st}), fit($_->{label}, $lw),
+          $DIM, fit($_->{dir}, $dw), $RST, $DIM, age($_->{act}), $RST;
+      }
+    } else {
+      my @rows = sort { $order->() } values %sess;
+      my $sw = 0; for (@rows) { $sw = length $_->{s} if length $_->{s} > $sw }
+      for (@rows) {
+        my $mark = $_->{rank} == 0 ? "$BLUE●$RST" : " ";
+        my $n = $_->{n} == 1 ? "1 window " : "$_->{n} windows";
+        my $st = $_->{st} // "";
+        printf "%s %s%s%s  %s%-10s%s  %s %-7s  %s%4s%s\n", $mark, $BOLD, fit($_->{s}, $sw), $RST,
+          $DIM, $n, $RST, dot($st), $st, $DIM, age($_->{act}), $RST;
+      }
+    }
+  '
+}
+
+preview() {
+  local target=$1 path lines
+  path=$(tmux display-message -p -t "$target" '#{pane_current_path}') || { echo "No such window: $target"; return 0; }
+  printf '\e[1;34m%s\e[0m\n' "${path/#"$HOME"/\~}"
+  # Keep the bottom of the screen, where the prompt is, inside the preview panel:
+  # tv is portrait with the preview at 60% of its height, minus borders and the header.
+  lines=${TMUX_PICKER_LINES:-$(tput lines 2>/dev/null || echo 50)}
+  tmux capture-pane -e -p -t "$target" \
+    | perl -e 'my @l = <STDIN>; pop @l while @l && $l[-1] =~ /^(?:\e\[[0-9;]*m|\s)*$/; print @l' \
+    | tail -n "$(( lines * 60 / 100 - 3 ))"
+}
+
+# tmux does not expand formats in a display-popup command, so the key binding goes
+# through run-shell (which does) and hands us the client and where it is.
+popup() {
+  local client=$1 here=$2 scope=${3:-}
+  tmux display-popup -c "$client" -E -B -w 90% -h 90% \
+    -e "TMUX_PICKER_CLIENT=$client" -e "TMUX_PICKER_CURRENT=$here" \
+    "$HOME/.local/bin/tmux-picker pick $scope"
+}
+
+# Runs inside the popup: tv, then switch the client that opened it.
+pick() {
+  local source=() target
+  export TMUX_PICKER_COLS TMUX_PICKER_LINES
+  TMUX_PICKER_COLS=$(tput cols) TMUX_PICKER_LINES=$(tput lines)
+  if [[ ${1:-} == --session ]]; then
+    source=(--source-command "$HOME/.local/bin/tmux-picker windows --session")
+  fi
+  target=$(tv tmux-picker "${source[@]+"${source[@]}"}") || return 0
+  [[ -n $target ]] && tmux switch-client ${TMUX_PICKER_CLIENT:+-c "$TMUX_PICKER_CLIENT"} -t "$target"
+}
+
+case ${1:-} in
+  windows)
+    if [[ ${2:-} == --session ]]; then
+      cur=$(current); list_windows -t "${cur%%:*}" | format windows
+    else
+      list_windows -a | format windows
+    fi ;;
+  sessions) list_windows -a | format sessions ;;
+  preview) preview "${2:?target}" ;;
+  popup) shift; popup "${1:?client}" "${2:?session:window}" "${3:-}" ;;
+  pick) shift; pick "$@" ;;
+  *) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

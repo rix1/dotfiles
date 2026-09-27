@@ -11,7 +11,10 @@ function ts --description "Browse and select tmux sessions with tv"
         return
     end
 
-    set -l session (tv tmux-sessions)
+    # Rows and preview come from ~/.local/bin/tmux-picker, sized to this terminal.
+    set -lx TMUX_PICKER_COLS (tput cols)
+    set -lx TMUX_PICKER_LINES (tput lines)
+    set -l session (tv tmux-picker-sessions)
 
     or return 0
 

@@ -30,6 +30,8 @@ Useful keys:
 - `prefix + I`: install TPM plugins listed in `tmux.conf`.
 - `prefix + x`: detach client. This replaces the default `prefix + d`.
 - `F12`: enter copy mode without using the prefix key.
+- `prefix + s`: window picker (every session). `prefix + w`: the same, limited
+  to the current session. Both replace `choose-tree`; see below.
 
 Before rebooting:
 
@@ -48,6 +50,30 @@ Restore expectations:
 Plugins are not committed. `dotfiles-setup` (`conf setup`) clones TPM and
 installs the plugins listed in `tmux.conf`; `~/.config/tmux/resurrect` is
 machine-local state and stays untracked.
+
+### Window and session pickers
+
+`prefix + s`, `prefix + w` and the `ts` fish function open television instead
+of tmux's built-in tree. The pieces:
+
+- `~/.local/bin/tmux-picker` builds the rows and previews from one
+  `tmux list-windows` call, and opens the popup. The bindings go through
+  `run-shell` because tmux does not expand `#{client_name}` in a
+  `display-popup` command.
+- `~/.config/television/cable/tmux-picker.toml`: one row per window, used by
+  `prefix + s` and `prefix + w`.
+- `~/.config/television/cable/tmux-picker-sessions.toml`: one row per session,
+  used by `ts`.
+
+Rows start with the current window or session (marked `●`), then the rest of
+the current session, then other sessions by when they were last attached. Each
+row shows the target, a label, the directory and the time since the window
+last printed anything. The label is Claude Code's task title (its pane title)
+when Claude is running, a window name set by hand, or else the command. A
+yellow dot means Claude printed something in the last 10 seconds (working),
+green means it is idle. The preview is the path plus a colour capture of the
+pane. `Enter` switches, `Ctrl-x` kills the window or session and refreshes the
+list, `Esc` closes.
 
 ## Starship
 

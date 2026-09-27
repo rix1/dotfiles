@@ -1,0 +1,30 @@
+[metadata]
+name = "tmux-picker"
+description = "Every tmux window, current session first, with Claude Code status and a live preview"
+requirements = ["tmux", "perl"]
+
+# Rows come from ~/.local/bin/tmux-picker: an optional ● marker, then the
+# session:window target, read back with {strip_ansi|regex_extract:[^ ●]+}.
+[source]
+command = "~/.local/bin/tmux-picker windows"
+ansi = true
+output = "{strip_ansi|regex_extract:[^ ●]+}"
+frecency = false
+
+[preview]
+command = "~/.local/bin/tmux-picker preview '{strip_ansi|regex_extract:[^ ●]+}'"
+cached = false
+
+[ui]
+layout = "portrait"
+
+[ui.preview_panel]
+size = 60
+
+[keybindings]
+ctrl-x = ["actions:kill", "reload_source"]
+
+[actions.kill]
+description = "Kill the selected window (and its session, if it was the last one)"
+command = "tmux kill-window -t '{strip_ansi|regex_extract:[^ ●]+}'"
+mode = "fork"
