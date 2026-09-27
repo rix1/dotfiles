@@ -131,8 +131,10 @@ pick() {
   if [[ ${1:-} == --session ]]; then
     source=(--source-command "$HOME/.local/bin/tmux-picker windows --session")
   fi
+  # Esc exits tv with status 0 and no output; return 0 then too, or run-shell reports "returned 1".
   target=$(tv tmux-picker "${source[@]+"${source[@]}"}") || return 0
-  [[ -n $target ]] && tmux switch-client ${TMUX_PICKER_CLIENT:+-c "$TMUX_PICKER_CLIENT"} -t "$target"
+  [[ -n $target ]] || return 0
+  tmux switch-client ${TMUX_PICKER_CLIENT:+-c "$TMUX_PICKER_CLIENT"} -t "$target"
 }
 
 case ${1:-} in

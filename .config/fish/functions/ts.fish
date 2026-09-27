@@ -16,7 +16,8 @@ function ts --description "Browse and select tmux sessions with tv"
     set -lx TMUX_PICKER_LINES (tput lines)
     set -l session (tv tmux-picker-sessions)
 
-    or return 0
+    # Esc exits tv with status 0 and no output.
+    test -n "$session"; or return 0
 
     if set -q TMUX
         tmux switch-client -t $session
