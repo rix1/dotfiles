@@ -62,18 +62,18 @@ function yt-transcript --description "Download a YouTube video's captions as pla
     or return 1
 
     echo "yt-transcript: fetching '$lang' captions…" >&2
-    yt-dlp --quiet --no-warnings --no-progress --no-playlist --skip-download \
+    # --ignore-errors: YouTube often answers 429 for machine-translated tracks
+    # (e.g. 'en' next to 'en-orig'); keep whichever tracks did download.
+    # Warnings go to a log that is only shown when nothing usable came back.
+    yt-dlp --quiet --ignore-errors --no-progress --no-playlist --skip-download \
         --write-subs --write-auto-subs --sub-langs $sub_langs --sub-format vtt \
         --write-info-json \
-        --output "$tmp/%(id)s.%(ext)s" -- $url
-    if test $status -ne 0
-        rm -rf $tmp
-        return 1
-    end
+        --output "$tmp/%(id)s.%(ext)s" -- $url 2>$tmp/yt-dlp.log
 
     set -l vtts $tmp/*.vtt
     if test (count $vtts) -eq 0
-        echo "yt-transcript: no '$lang' captions found. Try 'yt-transcript --list URL' to see what is available." >&2
+        string match -v -- '*impersonat*' <$tmp/yt-dlp.log >&2
+        echo "yt-transcript: no '$lang' captions downloaded. Try 'yt-transcript --list URL' to see what is available." >&2
         rm -rf $tmp
         return 1
     end
