@@ -97,21 +97,22 @@ a file are resolved by keeping the deletion; any other conflict aborts and
 tells you. It is idempotent and pushes with `--force-with-lease`.
 
 `conf setup` runs `~/.local/bin/dotfiles-setup`, the per-machine
-provisioning: fish >= 4, fisher plugins from `fish_plugins`, tpm and the tmux
-plugins, fonts from `~/.config/fonts` into `~/Library/Fonts`, the Ghostty
-`font-codepoint-map` line, the Starship counter binary, and a list of missing
-CLI tools (reported, never installed). Every step checks before acting, so
-run it whenever.
+provisioning: Homebrew present, everything in `~/.config/Brewfile` installed
+(`brew bundle`, never upgrades or removes), fish >= 4 as the login shell,
+fisher plugins from `fish_plugins`, tpm and the tmux plugins, fonts from
+`~/.config/fonts` into `~/Library/Fonts`, the Ghostty `font-codepoint-map`
+line, the Starship counter binary, and the Claude Code hooks. Every step
+checks before acting, so run it whenever. A CLI tool that fish config,
+functions or aliases call belongs in the Brewfile (on `main`).
 
-Fresh machine, before the scripts exist locally:
+Fish startup must not fail on a machine where a tool is missing:
+`conf.d/00_path.fish` sorts first and puts Homebrew and `~/.local/bin` on
+PATH, and files that source an installer's env file (`deno.fish`,
+`uv.env.fish`, `rustup.fish`) check that it exists first.
 
-```sh
-git clone --bare https://github.com/rix1/dotfiles ~/.dotfiles
-alias conf='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
-conf config status.showUntrackedFiles no
-conf checkout imac              # this machine's branch; for a new machine: conf checkout -b <name> main
-~/.local/bin/dotfiles-sync      # from then on: conf sync
-```
+A fresh machine is set up in a fixed order (Command Line Tools, Homebrew,
+clone, `dotfiles-setup`, then fish); the steps and the reasons are in
+`~/.github/README.md`, "Setting up a new Mac".
 
 ## Committing to `main` from a machine
 
