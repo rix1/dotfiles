@@ -4,7 +4,7 @@ function conf --wraps git --description 'alias for a bare git repo to manage dot
             # rebase this machine's branch onto origin/main, then dotfiles-setup
             dotfiles-sync $argv[2..]
         case setup
-            # idempotent per-machine provisioning (fish, fisher, tpm, fonts, ghostty)
+            # idempotent per-machine provisioning (Brewfile, login shell, fisher, tpm, fonts, ghostty)
             dotfiles-setup $argv[2..]
         case '*'
             /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME $argv

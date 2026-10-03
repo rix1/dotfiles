@@ -1,0 +1,33 @@
+# What the dotfiles expect on every machine. `conf setup` installs anything
+# missing from here with `brew bundle`; it never removes or upgrades. Add apps
+# you want everywhere; one-off tools stay a plain `brew install`.
+
+tap "nikitabobko/tap"
+
+# Called by fish on every start (conf.d, config.fish), so they have to be
+# installed before fish runs for the first time.
+brew "fish"
+brew "starship"
+brew "direnv"
+brew "fzf"
+brew "fnm"
+
+# Fish functions and aliases, git, tmux pickers, dotfiles scripts
+brew "bat"
+brew "eza"
+brew "fd"
+brew "ripgrep"
+brew "git-delta"     # git core.pager
+brew "neovim"        # git core.editor
+brew "gnupg"         # commits are signed
+brew "pinentry-mac"
+brew "gh"            # git credential helper for github.com
+brew "tmux"
+brew "television"
+brew "uv"
+brew "yt-dlp"
+
+cask "ghostty"
+cask "aerospace"
+cask "zed"
+cask "font-ia-writer-mono"   # terminal font; fonts/build-llm-logos.py measures it

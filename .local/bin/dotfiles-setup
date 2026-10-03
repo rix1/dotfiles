@@ -5,30 +5,33 @@
 #   dotfiles-setup --dry-run   only report
 #
 # Run it after `dotfiles-sync` (which does so automatically) or any time; every
-# step looks before it acts, so a second run is a no-op. Steps:
+# step looks before it acts, so a second run is a no-op. The order matters on a
+# fresh machine: fish sources starship, direnv, fnm etc. on every start, so the
+# Brewfile is installed before fish becomes the login shell. Steps:
 #
-#   fish        >= 4 via Homebrew
+#   homebrew    present (stops here if not: install it first, see ~/.github/README.md)
+#   brewfile    everything in ~/.config/Brewfile installed (never upgrades or removes)
+#   shell       fish >= 4 in /etc/shells and set as the login shell (sudo, chsh)
 #   fisher      plugins installed as listed in ~/.config/fish/fish_plugins
 #   tmux        tpm cloned, plugins from tmux.conf installed
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop) registered in ~/.claude/settings.json
-#   tools       report CLI tools that are missing (never installs them)
 
 set -uo pipefail
 
 DRY=0
 case ${1:-} in
   --dry-run) DRY=1 ;;
-  -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   "") ;;
   *) echo "dotfiles-setup: unknown option: $1" >&2; exit 2 ;;
 esac
 
 H=${HOME_OVERRIDE:-$HOME}
 CFG=$H/.config
-changed=0
+changed=0 newshell=0
 
 hdr()  { printf '\n%s\n' "$*"; }
 ok()   { printf '  ✓ %s\n' "$*"; }
@@ -36,15 +39,54 @@ skip() { printf '  · %s\n' "$*"; }
 act()  { changed=1; if (( DRY )); then printf '  → would %s\n' "$*"; else printf '  → %s\n' "$*"; fi; }
 run()  { (( DRY )) || "$@"; }
 
-# ---------------------------------------------------------------- fish
-hdr "fish"
-if command -v fish >/dev/null; then
+# ---------------------------------------------------------------- homebrew
+hdr "homebrew"
+# A fresh zsh has no brew on PATH until `brew shellenv` runs; don't depend on it.
+if ! command -v brew >/dev/null && [[ -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv bash)"
+fi
+if command -v brew >/dev/null; then
+  ok "$(brew --version | head -1)"
+else
+  skip "Homebrew is missing and every step below needs it."
+  skip "Install it first (~/.github/README.md, step 2), then rerun."
+  exit 1
+fi
+
+# ---------------------------------------------------------------- brewfile
+hdr "brewfile"
+BREWFILE=$CFG/Brewfile
+if [[ ! -f $BREWFILE ]]; then
+  skip "no ~/.config/Brewfile"
+elif HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --no-upgrade --file="$BREWFILE" >/dev/null 2>&1; then
+  ok "everything in ~/.config/Brewfile is installed"
+else
+  HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --no-upgrade --verbose --file="$BREWFILE" 2>&1 \
+    | sed -n 's/^→ \(.*\) needs to be installed.*/\1/p' | while read -r l; do skip "missing: $l"; done
+  act "brew bundle install --file ~/.config/Brewfile"
+  run brew bundle install --no-upgrade --file="$BREWFILE"
+fi
+
+# ---------------------------------------------------------------- shell
+hdr "login shell"
+FISH=$(command -v fish || true)
+if [[ -z $FISH ]]; then
+  skip "fish not installed (it is in the Brewfile; rerun after brew bundle succeeds)"
+else
   v=$(fish --version | awk '{print $NF}')
   if (( ${v%%.*} >= 4 )); then ok "fish $v"
-  elif command -v brew >/dev/null; then act "upgrade fish $v → 4.x (brew)"; run brew upgrade fish
-  else skip "fish $v and no Homebrew; upgrade by hand"; fi
-else
-  skip "fish not installed (brew install fish)"
+  else act "upgrade fish $v → 4.x (brew)"; run brew upgrade fish; fi
+
+  # Both changes need a password prompt, so only offer them in a terminal.
+  if grep -qxF "$FISH" /etc/shells; then ok "$FISH listed in /etc/shells"
+  elif [[ -t 0 ]]; then act "add $FISH to /etc/shells (sudo)"; run sudo sh -c "echo '$FISH' >> /etc/shells"
+  else skip "$FISH not in /etc/shells; run in a terminal: echo $FISH | sudo tee -a /etc/shells"; fi
+
+  login=$(dscl . -read "/Users/$(id -un)" UserShell 2>/dev/null | awk '{print $2}')
+  if [[ $login == "$FISH" ]]; then ok "login shell is fish"
+  elif [[ -t 0 ]] && grep -qxF "$FISH" /etc/shells; then
+    act "chsh -s $FISH (asks for your password)"; run chsh -s "$FISH" && newshell=1
+  else skip "login shell is ${login:-unknown}; run in a terminal: chsh -s $FISH"; fi
 fi
 
 # ---------------------------------------------------------------- fisher
@@ -54,6 +96,8 @@ if [[ -f $PLUGINS ]] && command -v fish >/dev/null && fish -c 'type -q fisher' 2
   want=$(sort "$PLUGINS"); have=$(fish -c 'fisher list' 2>/dev/null | sort)
   if [[ $want == "$have" ]]; then ok "in sync with fish_plugins ($(wc -l < "$PLUGINS" | tr -d ' ') plugins)"
   else act "fisher update (installs everything in fish_plugins)"; run fish -c 'fisher update'; fi
+elif [[ ! -f $PLUGINS ]]; then
+  skip "no ~/.config/fish/fish_plugins (restore it: conf restore .config/fish/fish_plugins)"
 else
   skip "fisher not available yet (it ships in the dotfiles; open a new fish shell and rerun)"
 fi
@@ -140,22 +184,10 @@ else
   done
 fi
 
-# ---------------------------------------------------------------- tools
-hdr "tools"
-missing=()
-for t in starship tv bat fd eza rg delta direnv tmux gh jq yt-dlp uv; do
-  command -v "$t" >/dev/null || missing+=("$t")
-done
-if (( ${#missing[@]} )); then
-  skip "missing: ${missing[*]}"
-  skip "brew install ${missing[*]//delta/git-delta}"
-else
-  ok "all expected CLI tools present"
-fi
-
 echo
 if (( changed )); then
   (( DRY )) && echo "dry run: changes pending" || echo "done: some steps changed things (open a new terminal for fonts and fish)"
+  if (( newshell )); then echo "login shell is now fish: quit this terminal and open Ghostty before installing anything else"; fi
 else
   echo "nothing to do"
 fi
