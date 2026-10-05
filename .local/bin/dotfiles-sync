@@ -90,7 +90,8 @@ else
     rounds=0
     while [[ -d $WGD/rebase-merge || -d $WGD/rebase-apply ]]; do
       (( ++rounds > 50 )) && { wg rebase --abort; die "gave up after 50 conflict rounds"; }
-      mapfile -t unmerged < <(wg diff --name-only --diff-filter=U)
+      unmerged=()   # no mapfile: a fresh Mac runs this with bash 3.2
+      while IFS= read -r f; do unmerged+=("$f"); done < <(wg diff --name-only --diff-filter=U)
       if (( ${#unmerged[@]} )); then
         for f in "${unmerged[@]}"; do
           # Stage 2 is main's side. No stage 2 means main deleted the file: keep that.

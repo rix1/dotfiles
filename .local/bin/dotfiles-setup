@@ -92,14 +92,31 @@ fi
 # ---------------------------------------------------------------- fisher
 hdr "fisher plugins"
 PLUGINS=$CFG/fish/fish_plugins
-if [[ -f $PLUGINS ]] && command -v fish >/dev/null && fish -c 'type -q fisher' 2>/dev/null; then
-  want=$(sort "$PLUGINS"); have=$(fish -c 'fisher list' 2>/dev/null | sort)
-  if [[ $want == "$have" ]]; then ok "in sync with fish_plugins ($(wc -l < "$PLUGINS" | tr -d ' ') plugins)"
-  else act "fisher update (installs everything in fish_plugins)"; run fish -c 'fisher update'; fi
-elif [[ ! -f $PLUGINS ]]; then
-  skip "no ~/.config/fish/fish_plugins (restore it: conf restore .config/fish/fish_plugins)"
-else
+# The plugin files are tracked, so on a machine where fisher has no record of
+# them (empty $_fisher_plugins) a plain `fisher update` treats every plugin as
+# a new install, refuses to overwrite the checked-out files, and then deletes
+# fish_plugins because nothing got installed. Recording the listed plugins as
+# installed first makes it an update, which rewrites the files in place.
+FISHER_ADOPT='for p in (string match -rv "^\s*(#|\$)" < $__fish_config_dir/fish_plugins)
+  contains -- (string lower -- $p) (string lower -- $_fisher_plugins); or set -U --append _fisher_plugins $p
+end; fisher update'
+restored=0
+if [[ ! -f $PLUGINS ]] && git --git-dir="$H/.dotfiles" cat-file -e HEAD:.config/fish/fish_plugins 2>/dev/null; then
+  act "restore fish_plugins (an earlier failed fisher run deletes it)"
+  run git --git-dir="$H/.dotfiles" --work-tree="$H" checkout -- .config/fish/fish_plugins
+  restored=1
+fi
+if [[ ! -f $PLUGINS ]] && ! (( restored )); then
+  skip "no ~/.config/fish/fish_plugins"
+elif ! command -v fish >/dev/null || ! fish -c 'type -q fisher' 2>/dev/null; then
   skip "fisher not available yet (it ships in the dotfiles; open a new fish shell and rerun)"
+else
+  lc() { tr '[:upper:]' '[:lower:]' | sort; }
+  want=$(git --git-dir="$H/.dotfiles" show HEAD:.config/fish/fish_plugins 2>/dev/null | lc)
+  [[ -f $PLUGINS ]] && want=$(lc < "$PLUGINS")
+  have=$(fish -c 'fisher list' 2>/dev/null | lc)
+  if [[ $want == "$have" ]]; then ok "in sync with fish_plugins ($(wc -l <<<"$want" | tr -d ' ') plugins)"
+  else act "fisher update (adopts the checked-out plugin files, installs the rest)"; run fish -c "$FISHER_ADOPT"; fi
 fi
 
 # ---------------------------------------------------------------- tmux

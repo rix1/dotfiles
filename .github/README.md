@@ -73,20 +73,23 @@ conf config status.showUntrackedFiles no
 conf checkout mbp               # or imac; for a new machine: conf checkout -b <name> main
 ```
 
-**4. `dotfiles-setup`.** Still in zsh, in Terminal:
+**4. Sync and set up.** Still in zsh, in Terminal:
 
 ```sh
-~/.local/bin/dotfiles-setup
+~/.local/bin/dotfiles-sync --no-push
 ```
 
-It works through these steps in order, and each one checks before it acts:
+This rebases the machine branch onto the latest `main` first (a branch made
+on an earlier attempt may be behind it), then runs `dotfiles-setup`. Use
+`--no-push` because `gh` isn't logged in yet. `dotfiles-setup` works through
+these steps in order, and each one checks before it acts:
 
 | Step         | What it does                                                                 |
 | ------------ | ---------------------------------------------------------------------------- |
 | homebrew     | stops here if `brew` is missing                                              |
 | brewfile     | `brew bundle install` for anything in `~/.config/Brewfile` that is missing   |
 | login shell  | adds fish to `/etc/shells` (sudo), then `chsh -s` (asks for your password)   |
-| fisher       | installs the plugins listed in `~/.config/fish/fish_plugins`                 |
+| fisher       | registers the checked-out plugins with fisher, then `fisher update`          |
 | tmux         | clones tpm, installs the plugins from `tmux.conf`                            |
 | fonts        | copies `~/.config/fonts/*.otf` to `~/Library/Fonts`                          |
 | ghostty      | adds the `font-codepoint-map` line for the LLM logo glyphs                   |
@@ -179,6 +182,12 @@ terminal, pick a patched font such as
   fish function and the scripts are in `~/.local/bin`, which
   `conf.d/00_path.fish` puts on PATH. In zsh, use the alias from step 3 and
   the full path `~/.local/bin/dotfiles-setup`.
+
+- `fisher: Cannot install "…": please remove or move conflicting files
+  first`, and `fish_plugins` is gone afterwards: plain `fisher update` on a
+  machine where fisher has no record of the plugins (whose files are tracked
+  here) does that. Run `conf setup` instead: it restores `fish_plugins` and
+  registers the plugins with fisher before updating them.
 
 - For Celery (GDAL really) to work make sure `DYLD_LIBRARY_PATH` is set:
   ```
