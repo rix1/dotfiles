@@ -2,7 +2,7 @@
 # missing from here with `brew bundle`; it never removes or upgrades. Add apps
 # you want everywhere; one-off tools stay a plain `brew install`.
 
-tap "nikitabobko/tap"
+tap "nikitabobko/tap"   # dotfiles-setup trusts every tap listed here (Homebrew 7)
 
 # Called by fish on every start (conf.d, config.fish), so they have to be
 # installed before fish runs for the first time.

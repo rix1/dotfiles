@@ -56,6 +56,15 @@ fi
 # ---------------------------------------------------------------- brewfile
 hdr "brewfile"
 BREWFILE=$CFG/Brewfile
+if [[ -f $BREWFILE ]] && brew help trust >/dev/null 2>&1; then
+  # Homebrew 7 won't load casks from a third-party tap until it is trusted, and
+  # `brew bundle` has no option for it, so trust every tap the Brewfile names.
+  trusted=$(brew trust --json=v1 2>/dev/null)
+  for tap in $(sed -n 's/^tap "\([^"]*\)".*/\1/p' "$BREWFILE"); do
+    if grep -qF "\"$tap\"" <<<"$trusted"; then ok "tap $tap trusted"
+    else act "brew trust --tap $tap"; run brew trust --tap "$tap" >/dev/null; fi
+  done
+fi
 if [[ ! -f $BREWFILE ]]; then
   skip "no ~/.config/Brewfile"
 elif HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --no-upgrade --file="$BREWFILE" >/dev/null 2>&1; then
