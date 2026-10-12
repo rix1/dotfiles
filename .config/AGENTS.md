@@ -21,7 +21,11 @@ conf log --oneline -10
 
 `conf` expands to `git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME`. Plain
 `git` in `$HOME` does nothing useful. Agents cannot sign commits (no GPG
-passphrase), so always pass `--no-gpg-sign`.
+passphrase), so always pass `--no-gpg-sign`. `dotfiles-setup` also turns
+signing off for every agent commit, in any repo: it puts
+`GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=commit.gpgsign` and
+`GIT_CONFIG_VALUE_0=false` in the `env` of `~/.claude/settings.json` and the
+`[shell_environment_policy.set]` of `~/.codex/config.toml`.
 
 ## Branch model
 
@@ -101,7 +105,8 @@ provisioning: Homebrew present, everything in `~/.config/Brewfile` installed
 (`brew bundle`, never upgrades or removes), fish >= 4 as the login shell,
 fisher plugins from `fish_plugins`, tpm and the tmux plugins, fonts from
 `~/.config/fonts` into `~/Library/Fonts`, the Ghostty `font-codepoint-map`
-line, the Starship counter binary, and the Claude Code hooks. Every step
+line, the Starship counter binary, the Claude Code hooks, and unsigned agent
+commits. Every step
 checks before acting, so run it whenever. A CLI tool that fish config,
 functions or aliases call belongs in the Brewfile (on `main`).
 

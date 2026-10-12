@@ -18,13 +18,14 @@
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop) registered in ~/.claude/settings.json
+#   signing     commit.gpgsign=false in the Claude Code and Codex shell environments (agents can't sign)
 
 set -uo pipefail
 
 DRY=0
 case ${1:-} in
   --dry-run) DRY=1 ;;
-  -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   "") ;;
   *) echo "dotfiles-setup: unknown option: $1" >&2; exit 2 ;;
 esac
@@ -208,6 +209,45 @@ else
       fi
     fi
   done
+fi
+
+# ---------------------------------------------------------------- agent commit signing
+# ~/.gitconfig signs every commit, and agents can't answer the GPG passphrase
+# prompt, so their commits hang. Git reads extra config from GIT_CONFIG_*
+# variables, which override every config file; set them in the environment
+# each agent gives its shell commands.
+hdr "agent commit signing"
+if [[ -f $SETTINGS ]] && command -v jq >/dev/null && jq -e . "$SETTINGS" >/dev/null 2>&1; then
+  if jq -e '.env.GIT_CONFIG_KEY_0 == "commit.gpgsign" and .env.GIT_CONFIG_VALUE_0 == "false"' "$SETTINGS" >/dev/null; then
+    ok "claude: commit.gpgsign=false in ~/.claude/settings.json env"
+  elif jq -e '.env.GIT_CONFIG_COUNT' "$SETTINGS" >/dev/null; then
+    skip "claude: settings.json env already sets other GIT_CONFIG_* values; add commit.gpgsign=false by hand"
+  else
+    act "claude: set commit.gpgsign=false in ~/.claude/settings.json env"
+    if ! (( DRY )); then
+      tmp=$(mktemp) && jq '.env //= {} | .env += {GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "commit.gpgsign", GIT_CONFIG_VALUE_0: "false"}' \
+        "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+    fi
+  fi
+else
+  skip "claude: no valid ~/.claude/settings.json or no jq"
+fi
+CODEX=$H/.codex/config.toml
+if [[ ! -f $CODEX ]]; then skip "codex: no ~/.codex/config.toml"
+elif grep -qE '^GIT_CONFIG_KEY_0 *= *"commit.gpgsign"' "$CODEX"; then ok "codex: commit.gpgsign=false in shell_environment_policy.set"
+elif grep -qE '^GIT_CONFIG_COUNT *=' "$CODEX"; then skip "codex: config.toml already sets other GIT_CONFIG_* values; add commit.gpgsign=false by hand"
+else
+  act "codex: set commit.gpgsign=false in [shell_environment_policy.set]"
+  if ! (( DRY )); then
+    vars='GIT_CONFIG_COUNT = "1"\nGIT_CONFIG_KEY_0 = "commit.gpgsign"\nGIT_CONFIG_VALUE_0 = "false"'
+    tmp=$(mktemp)
+    if grep -qxF '[shell_environment_policy.set]' "$CODEX"; then
+      awk -v vars="$vars" '{ print } $0 == "[shell_environment_policy.set]" { gsub(/\\n/, "\n", vars); print vars }' "$CODEX" > "$tmp"
+    else
+      { cat "$CODEX"; printf '\n[shell_environment_policy.set]\n%b\n' "$vars"; } > "$tmp"
+    fi
+    cat "$tmp" > "$CODEX" && rm "$tmp"
+  fi
 fi
 
 echo
