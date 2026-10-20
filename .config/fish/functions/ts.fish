@@ -12,11 +12,12 @@ function ts --description "Browse and select tmux sessions with tv"
     end
 
     # Rows and preview come from ~/.local/bin/tmux-picker, sized to this terminal.
+    # ctrl-n prompts for a name and creates the session (in this directory).
     set -lx TMUX_PICKER_COLS (tput cols)
     set -lx TMUX_PICKER_LINES (tput lines)
-    set -l session (tv tmux-picker-sessions)
+    set -l session (~/.local/bin/tmux-picker choose tmux-picker-sessions)
 
-    # Esc exits tv with status 0 and no output.
+    # Nothing picked (Esc, or an empty name).
     test -n "$session"; or return 0
 
     if set -q TMUX
