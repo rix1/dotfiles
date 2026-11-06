@@ -11,20 +11,21 @@ The user marks a Slack message they intend to build with the custom reaction
 emoji and is **not** the marker). The marker is the user's own reaction: someone
 else's 🚧 on a message does not count.
 
-Done is the user's own `:white_check_mark:` on the same message. The Slack
-connector cannot remove a reaction, so 🚧 stays on a message forever and ✅ is what
-takes it off the list.
+Shipped is the user's own `:ship-it-parrot:` on the same message, and the parrot
+replaces 🚧. The Slack connector can add a reaction but not remove one, so the
+search below treats a message with the user's parrot as done whether or not the
+🚧 is still there.
 
 ## 1. Find the items
 
 Load the Slack tools in one ToolSearch call:
-`select:mcp__claude_ai_Slack__slack_search_public_and_private,mcp__claude_ai_Slack__slack_read_thread,mcp__claude_ai_Slack__slack_read_file,mcp__claude_ai_Slack__slack_add_reaction,mcp__claude_ai_Slack__slack_send_message`
+`select:mcp__claude_ai_Slack__slack_search_public_and_private,mcp__claude_ai_Slack__slack_read_thread,mcp__claude_ai_Slack__slack_read_file,mcp__claude_ai_Slack__slack_add_reaction,mcp__claude_ai_Slack__slack_get_reactions,mcp__claude_ai_Slack__slack_send_message,mcp__claude_ai_Slack__slack_get_file_upload_url,mcp__claude_ai_Slack__slack_complete_file_upload`
 
 Run these two searches in parallel with `slack_search_public_and_private`,
 `sort: "timestamp"`, `include_context: false`, `natural_language_query: ""`:
 
 - `filters: "hasmy::under-construction:"` (`response_format: "detailed"`, so you get channel ids and message ts)
-- `filters: "hasmy::under-construction: hasmy::white_check_mark:"` (`response_format: "concise"`)
+- `filters: "hasmy::under-construction: hasmy::ship-it-parrot:"` (`response_format: "concise"`)
 
 Open items are the first set minus the second. Page with `cursor` until the
 first search is exhausted. If the user passed an argument, narrow the search with
@@ -90,14 +91,32 @@ branches, tests, commits and deploys. Do not commit or push unless the user asks
 
 ## 5. Close it out
 
-When the change is done (committed, or merged if the user works that way), offer
-both of these and do only what the user says yes to; each one is visible to the
-whole channel:
+Only once the change is live: merged and deployed, not just committed or in a
+PR. A parrot on a message tells its author they can use the fix now. Then
+propose both of these together in one confirmation, since each is visible to the
+whole channel, and do what the user says yes to:
 
-- Add `:white_check_mark:` to the message (`slack_add_reaction`), which removes it
-  from the list next time.
+- Swap 🚧 for the parrot. Add `ship-it-parrot` with `slack_add_reaction`, which
+  takes the item off the list. Then take the user's 🚧 off: with the Chrome
+  extension connected, open the message's permalink in Slack on the web and
+  click the user's own `:under-construction:` reaction pill, which toggles it
+  off, and confirm with `slack_get_reactions` that the user is no longer on it.
+  Without the browser, tell the user the 🚧 is theirs to tap off.
 - A short thread reply saying what changed and where to see it. It goes out as
   the user, so write it in their voice: read their own recent messages in the
   channel and match the language, tone and length, not a formal style guide.
+  - **Attach a screenshot when the change is something you can see**: a new
+    button, a dialog, a changed layout. Skip it for a fix that looks the same
+    as before, such as a calculation, a crash or a data repair.
+  - Take it on localhost: start the app's dev server on the next free port,
+    open the screen the message is about, and set up the state that shows the
+    change (the field open, the dialog up). Capture only that part with the
+    Chrome `zoom` action and `save_to_disk: true`.
+  - **Save nothing while you set it up**: a dev server may write to production
+    data. Show the dialog, then Cancel or Esc. Stop the dev server afterwards.
+  - Upload with `slack_get_file_upload_url` and `slack_complete_file_upload`
+    into the same thread.
+  - The user may be on their phone and unable to check the image. Describe in
+    one line what it shows when asking for the go-ahead.
 
 Then show the remaining open items and ask whether to take the next one.
