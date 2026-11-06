@@ -98,9 +98,14 @@ whole channel, and do what the user says yes to:
 
 - Swap 🚧 for the parrot. Add `ship-it-parrot` with `slack_add_reaction`, which
   takes the item off the list. Then take the user's 🚧 off: with the Chrome
-  extension connected, open the message's permalink in Slack on the web and
-  click the user's own `:under-construction:` reaction pill, which toggles it
-  off, and confirm with `slack_get_reactions` that the user is no longer on it.
+  extension connected, open the message in Slack on the web and click the
+  user's own `:under-construction:` reaction pill, which toggles it off, and
+  confirm with `slack_get_reactions` that the user is no longer on it.
+  - The `/archives/<channel>/p<ts>` permalink stops on a "Launching" page; go to
+    `https://<workspace>.slack.com/messages/<channel>/p<ts>` instead.
+  - A mouse click on the pill may not register. Click it from the page:
+    `document.querySelector('button[data-qa="reactji"][aria-label*="under construction"][aria-pressed="true"]').click()`,
+    after checking that exactly one such button is on screen.
   Without the browser, tell the user the 🚧 is theirs to tap off.
 - A short thread reply saying what changed and where to see it. It goes out as
   the user, so write it in their voice: read their own recent messages in the
