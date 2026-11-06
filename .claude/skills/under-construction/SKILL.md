@@ -96,8 +96,8 @@ whole channel:
 
 - Add `:white_check_mark:` to the message (`slack_add_reaction`), which removes it
   from the list next time.
-- A short thread reply saying what changed and where to see it. Draft it in the
-  language of the thread, show it, and follow the repo's rules for prose to
-  people if it has any.
+- A short thread reply saying what changed and where to see it. It goes out as
+  the user, so write it in their voice: read their own recent messages in the
+  channel and match the language, tone and length, not a formal style guide.
 
 Then show the remaining open items and ask whether to take the next one.
