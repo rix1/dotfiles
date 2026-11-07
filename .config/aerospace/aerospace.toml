@@ -67,7 +67,7 @@ on-window-detected = [
     { if = 'test %{app-bundle-id} = com.sindresorhus.Dato', run = 'layout floating' },
 
     # Automatic workspace assignment
-    { if = 'test %{app-bundle-id} = dev.zed.Zed', run = 'move-node-to-workspace 2' },
+    { if = 'test %{app-bundle-id} = dev.zed.Zed', run = 'move-node-to-workspace C' },
     { if = 'test %{app-bundle-id} = com.mitchellh.ghostty', run = ['layout floating', 'move-node-to-workspace 3'] },
     { if = 'test %{app-bundle-id} = com.spotify.client', run = 'move-node-to-workspace 4' },
     { if = 'test %{app-bundle-id} = com.linear', run = 'move-node-to-workspace 8' },
