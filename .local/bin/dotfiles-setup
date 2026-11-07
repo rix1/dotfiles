@@ -17,7 +17,8 @@
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
-#   claude      dotfiles skill hooks (UserPromptSubmit, Stop) registered in ~/.claude/settings.json
+#   claude      dotfiles skill hooks (UserPromptSubmit, Stop) and the claude-agent-view
+#               SubagentStart hook registered in ~/.claude/settings.json
 #   signing     commit.gpgsign=false in the Claude Code and Codex shell environments (agents can't sign)
 
 set -uo pipefail
@@ -209,6 +210,21 @@ else
       fi
     fi
   done
+  # Each subagent gets a background Rex tab following its transcript (no-op outside Rex).
+  if [[ ! -x $H/.local/bin/claude-agent-view ]]; then skip "no ~/.local/bin/claude-agent-view"
+  elif [[ -f $SETTINGS ]] && jq -e \
+       '[.hooks.SubagentStart[]?.hooks[]?.command // "" | select(contains("claude-agent-view"))] | length > 0' \
+       "$SETTINGS" >/dev/null 2>&1; then
+    ok "SubagentStart hook registered"
+  else
+    act "register SubagentStart hook in ~/.claude/settings.json"
+    if ! (( DRY )); then
+      cmd="h=\$HOME/.local/bin/claude-agent-view; [ -x \"\$h\" ] && exec \"\$h\" --hook; exit 0"
+      tmp=$(mktemp) && jq --arg cmd "$cmd" \
+        '.hooks //= {} | .hooks.SubagentStart //= [] | .hooks.SubagentStart += [{hooks: [{type: "command", command: $cmd, async: true, timeout: 15}]}]' \
+        "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------- agent commit signing

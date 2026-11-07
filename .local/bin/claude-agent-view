@@ -1,0 +1,56 @@
+#!/bin/sh
+# Live, readable view of a Claude Code subagent transcript.
+#
+#   claude-agent-view FILE.jsonl   follow a subagent transcript in this terminal
+#   claude-agent-view --hook       SubagentStart hook: open a background Rex tab
+#                                  that follows the new subagent (reads hook JSON
+#                                  on stdin; does nothing outside Rex)
+set -eu
+
+follow() {
+	tail -n +1 -F "$1" 2>/dev/null | jq --unbuffered -r '
+	  select(.type == "assistant" or .type == "user") | .message.content
+	  | if type == "string" then empty else .[] end
+	  | if .type == "text" then "\u001b[1m▍\u001b[0m " + .text
+	    elif .type == "tool_use" then "\u001b[36m→ \(.name)\u001b[0m "
+	      + ((.input.description // .input.file_path // .input.command // .input.pattern // "") | tostring | .[0:160])
+	    elif .type == "tool_result" then "\u001b[2m  ↳ "
+	      + ((.content | if type == "array" then (map(.text? // "") | join(" ")) else tostring end) | gsub("\n"; " ") | .[0:140])
+	      + "\u001b[0m"
+	    else empty end'
+}
+
+hook() {
+	[ -n "${REX_SESSION:-}" ] || exit 0
+	command -v rex >/dev/null 2>&1 || exit 0
+	input=$(cat)
+	agent_id=$(printf '%s' "$input" | jq -r '.agent_id // empty')
+	parent=$(printf '%s' "$input" | jq -r '.transcript_path // empty')
+	agent_type=$(printf '%s' "$input" | jq -r '.agent_type // "agent"')
+	[ -n "$agent_id" ] && [ -n "$parent" ] || exit 0
+
+	dir="${parent%.jsonl}/subagents"
+	transcript="$dir/agent-$agent_id.jsonl"
+
+	# The meta file carries the Agent call's description; it can land a moment
+	# after the hook fires, so wait briefly before falling back to the type.
+	name=""
+	tries=0
+	while [ $tries -lt 20 ]; do
+		if [ -f "$dir/agent-$agent_id.meta.json" ]; then
+			name=$(jq -r '.description // empty' "$dir/agent-$agent_id.meta.json")
+			break
+		fi
+		tries=$((tries + 1))
+		sleep 0.1
+	done
+	[ -n "$name" ] || name="$agent_type"
+
+	rex window new -s "$REX_SESSION" "$name" --focus=false --keep-open -- "$0" "$transcript" >/dev/null
+}
+
+case "${1:-}" in
+--hook) hook ;;
+"" | -h | --help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' ;;
+*) follow "$1" ;;
+esac
