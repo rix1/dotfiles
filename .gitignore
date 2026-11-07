@@ -49,6 +49,7 @@ pyrightconfig.json
 
 cloud/scratchpad.py
 scratchpad/*
+elektro/scratchpad/*
 reconciliation-cleanup.py
 scripts/k8s-shell-custom.sh
 .envrc
@@ -82,3 +83,12 @@ scripts/k8s-shell-custom.sh
 # Claude Code: only the skills are tracked; the rest is state or secrets
 .claude/*
 !.claude/skills/
+
+# Reflect caches and local editor files
+.reflect/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
