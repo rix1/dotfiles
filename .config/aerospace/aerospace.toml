@@ -60,18 +60,8 @@ persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "C", 
 # the rest. Find an app's ID with `aerospace list-apps`.
 # See: https://nikitabobko.github.io/AeroSpace/guide#on-window-detected-callback
 on-window-detected = [
-    # Arc goes to workspace 1 when AeroSpace starts. This uses the legacy if.*
-    # syntax because the new one can't test for startup, and it has to come
-    # before the plain Arc rule below, which would otherwise match first.
-    {
-        if.app-id = 'company.thebrowser.Browser',
-        if.during-aerospace-startup = true,
-        run = ['layout floating', 'move-node-to-workspace 1'],
-    },
-
     # Do not auto-tile these apps
     { if = 'test %{app-bundle-id} = com.apple.finder', run = 'layout floating' },
-    { if = 'test %{app-bundle-id} = company.thebrowser.Browser', run = 'layout floating' },
     { if = 'test %{app-bundle-id} = company.thebrowser.dia', run = 'layout floating' },
     { if = 'test %{app-bundle-id} = com.sindresorhus.Dato', run = 'layout floating' },
 
@@ -81,10 +71,9 @@ on-window-detected = [
     { if = 'test %{app-bundle-id} = com.spotify.client', run = 'move-node-to-workspace 4' },
     { if = 'test %{app-bundle-id} = com.linear', run = 'move-node-to-workspace 8' },
     { if = 'test %{app-bundle-id} = com.superhuman.electron', run = 'move-node-to-workspace 9' },
-    # Reflect, Reflect Dev (personal build) and Reflect Classic
+    # Reflect and Reflect Dev (personal build)
     { if = 'test %{app-bundle-id} = app.reflect.desktop', run = 'move-node-to-workspace 0' },
     { if = 'test %{app-bundle-id} = app.reflect.desktop.dev', run = 'move-node-to-workspace 0' },
-    { if = 'test %{app-bundle-id} = app.reflect.ReflectDesktop', run = 'move-node-to-workspace 0' },
     # Notion Calendar
     { if = 'test %{app-bundle-id} = com.cron.electron', run = 'move-node-to-workspace C' },
     { if = 'test %{app-bundle-id} = com.tinyspeck.slackmacgap', run = 'move-node-to-workspace S' },
