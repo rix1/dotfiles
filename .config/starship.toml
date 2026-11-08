@@ -13,7 +13,7 @@ $character"""
 
 [username]
 show_always = true
-format = '[$user 🖥️ ]($style)'
+format = '[$user]($style) [ 󰇄 imac ](bold fg:black bg:purple) '
 disabled = false
 
 [character]
