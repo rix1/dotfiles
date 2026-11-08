@@ -1,7 +1,6 @@
 # Replace the "❯" symbol in the prompt with "➜"
 format = """
 $username\
-$hostname\
 $directory\
 $git_branch\
 $git_status\
