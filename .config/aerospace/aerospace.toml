@@ -44,6 +44,52 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 # Also see: https://nikitabobko.github.io/AeroSpace/goodies#disable-hide-app
 automatically-unhide-macos-hidden-apps = false
 
+# Config version for compatibility and deprecations. Version 2 makes
+# persistent-workspaces explicit instead of inferring it from the bindings.
+# See: https://nikitabobko.github.io/AeroSpace/guide#config-version
+config-version = 2
+
+# Reload the config automatically when this file is saved
+auto-reload-config = true
+
+# Workspaces that stay alive (and in the menu bar) even when they're empty.
+# This is the set config-version 1 inferred from the alt-<key> bindings below.
+persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "C", "M"]
+
+# Per-app rules. AeroSpace runs the first callback whose `if` succeeds and skips
+# the rest. Find an app's ID with `aerospace list-apps`.
+# See: https://nikitabobko.github.io/AeroSpace/guide#on-window-detected-callback
+on-window-detected = [
+    # Arc goes to workspace 1 when AeroSpace starts. This uses the legacy if.*
+    # syntax because the new one can't test for startup, and it has to come
+    # before the plain Arc rule below, which would otherwise match first.
+    {
+        if.app-id = 'company.thebrowser.Browser',
+        if.during-aerospace-startup = true,
+        run = ['layout floating', 'move-node-to-workspace 1'],
+    },
+
+    # Do not auto-tile these apps
+    { if = 'test %{app-bundle-id} = com.apple.finder', run = 'layout floating' },
+    { if = 'test %{app-bundle-id} = company.thebrowser.Browser', run = 'layout floating' },
+    { if = 'test %{app-bundle-id} = company.thebrowser.dia', run = 'layout floating' },
+    { if = 'test %{app-bundle-id} = com.sindresorhus.Dato', run = 'layout floating' },
+
+    # Automatic workspace assignment
+    { if = 'test %{app-bundle-id} = dev.zed.Zed', run = 'move-node-to-workspace 2' },
+    { if = 'test %{app-bundle-id} = com.mitchellh.ghostty', run = ['layout floating', 'move-node-to-workspace 3'] },
+    { if = 'test %{app-bundle-id} = com.spotify.client', run = 'move-node-to-workspace 4' },
+    { if = 'test %{app-bundle-id} = com.linear', run = 'move-node-to-workspace 8' },
+    { if = 'test %{app-bundle-id} = com.superhuman.electron', run = 'move-node-to-workspace 9' },
+    # Reflect, Reflect Dev (personal build) and Reflect Classic
+    { if = 'test %{app-bundle-id} = app.reflect.desktop', run = 'move-node-to-workspace 0' },
+    { if = 'test %{app-bundle-id} = app.reflect.desktop.dev', run = 'move-node-to-workspace 0' },
+    { if = 'test %{app-bundle-id} = app.reflect.ReflectDesktop', run = 'move-node-to-workspace 0' },
+    # Notion Calendar
+    { if = 'test %{app-bundle-id} = com.cron.electron', run = 'move-node-to-workspace C' },
+    { if = 'test %{app-bundle-id} = com.tinyspeck.slackmacgap', run = 'move-node-to-workspace S' },
+]
+
 # Possible values: (qwerty|dvorak|colemak)
 # See https://nikitabobko.github.io/AeroSpace/guide#key-mapping
 [key-mapping]
@@ -227,74 +273,3 @@ automatically-unhide-macos-hidden-apps = false
 #     9 = 'main'
 #     # s = ['secondary', 'main']
 #     # c = ['secondary', 'main']
-
-
-# Do not auto-tile these apps
-[[on-window-detected]]
-    if.app-id = 'com.apple.finder'
-    run = ['layout floating']
-
-# automatic workspace assginment
-
-
-[[on-window-detected]]
-    if.app-id = 'company.thebrowser.Browser'
-    run = ['layout floating']
-
-
-[[on-window-detected]]
-    if.app-id = 'company.thebrowser.dia'
-    run = ['layout floating']
-
-[[on-window-detected]]
-    if.app-id = 'com.sindresorhus.Dato'
-    run = ['layout floating']
-
-[[on-window-detected]]
-    if.app-id = 'company.thebrowser.Browser'
-    if.during-aerospace-startup = true
-    run = ['layout floating', 'move-node-to-workspace 1']
-
-[[on-window-detected]]
-    if.app-id = 'dev.zed.Zed'
-    run = ['move-node-to-workspace 2']
-
-
-[[on-window-detected]]
-    if.app-id = 'com.mitchellh.ghostty'
-    run = ['layout floating', 'move-node-to-workspace 3']
-
-
-[[on-window-detected]]
-    if.app-id = 'com.spotify.client'
-    run = ['move-node-to-workspace 4']
-
-
-[[on-window-detected]]
-    if.app-id = 'notion.id'
-    run = ['move-node-to-workspace 7']
-
-[[on-window-detected]]
-    if.app-id = 'com.linear'
-    run = ['move-node-to-workspace 8']
-
-[[on-window-detected]]
-    if.app-id = 'com.superhuman.electron'
-    run = ['move-node-to-workspace 9']
-
-[[on-window-detected]]
-    if.app-id = 'app.reflect.ReflectDesktop'
-    run = ['move-node-to-workspace 0']
-
-[[on-window-detected]]
-    if.app-id = 'app.reflect.desktop.dev'
-    run = ['move-node-to-workspace 0']
-
-
-[[on-window-detected]]
-    if.app-id = 'com.cron.electron'
-    run = ['move-node-to-workspace C']
-
-[[on-window-detected]]
-    if.app-id = 'com.tinyspeck.slackmacgap'
-    run = ['move-node-to-workspace S']
