@@ -286,6 +286,10 @@ automatically-unhide-macos-hidden-apps = false
     if.app-id = 'app.reflect.ReflectDesktop'
     run = ['move-node-to-workspace 0']
 
+[[on-window-detected]]
+    if.app-id = 'app.reflect.desktop.dev'
+    run = ['move-node-to-workspace 0']
+
 
 [[on-window-detected]]
     if.app-id = 'com.cron.electron'
