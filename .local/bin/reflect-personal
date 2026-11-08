@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# reflect-personal: my own Reflect build, assembled from feature branches.
+#
+# `personal` is never edited by hand. `rebuild` resets it to upstream
+# (origin/master) and merges every branch listed in the repo's git config
+# (`personal.branch`, in order). git rerere replays conflict resolutions
+# recorded on earlier rebuilds, so a conflict only needs resolving once.
+#
+#   reflect-personal status     each branch's distance from upstream
+#   reflect-personal rebuild    reset `personal` to upstream and merge the branches
+#   reflect-personal build      build "Reflect Dev.app" from `personal`
+#   reflect-personal install    copy the built app into /Applications
+#   reflect-personal push       back `personal` up to the fork
+#   reflect-personal all        rebuild, build, install
+#
+# Branches:  git -C ~/Development/reflect-open config --add personal.branch feat/x
+#            git -C ~/Development/reflect-open config --get-all personal.branch
+set -euo pipefail
+
+REPO="${REFLECT_REPO:-$HOME/Development/reflect-open}"
+WORKTREE="${REFLECT_PERSONAL_WORKTREE:-$HOME/Development/reflect-personal}"
+BRANCH=personal
+UPSTREAM=origin/master
+FORK_REMOTE="${REFLECT_FORK_REMOTE:-fork}"
+APP="Reflect Dev.app"
+BUNDLE="$WORKTREE/target/release/bundle/macos/$APP"
+
+say() { printf '\033[1m==> %s\033[0m\n' "$*"; }
+die() { printf 'reflect-personal: %s\n' "$*" >&2; exit 1; }
+
+branches() {
+  git -C "$REPO" config --get-all personal.branch ||
+    die "no branches listed; add one with: git -C $REPO config --add personal.branch feat/x"
+}
+
+ensure_worktree() {
+  if [ ! -d "$WORKTREE" ]; then
+    say "creating worktree $WORKTREE"
+    git -C "$REPO" worktree add -B "$BRANCH" "$WORKTREE" "$UPSTREAM"
+  fi
+}
+
+cmd_status() {
+  git -C "$REPO" fetch --quiet origin
+  local branch
+  for branch in $(branches); do
+    printf '%-40s ahead %3s  behind %4s\n' "$branch" \
+      "$(git -C "$REPO" rev-list --count "$UPSTREAM..$branch")" \
+      "$(git -C "$REPO" rev-list --count "$branch..$UPSTREAM")"
+  done
+}
+
+cmd_rebuild() {
+  git -C "$REPO" config rerere.enabled true
+  git -C "$REPO" config rerere.autoupdate true
+  git -C "$REPO" fetch --quiet origin
+  ensure_worktree
+  cd "$WORKTREE"
+  [ -z "$(git status --porcelain)" ] || die "$WORKTREE has uncommitted changes"
+  git checkout --quiet -B "$BRANCH" "$UPSTREAM"
+
+  local branch unresolved lockfile_conflict=0
+  for branch in $(branches); do
+    say "merging $branch"
+    if git merge --no-ff --no-edit --quiet "$branch"; then
+      continue
+    fi
+    unresolved="$(git diff --name-only --diff-filter=U)"
+    # The lockfile is regenerated below rather than merged by hand.
+    if [ "$unresolved" = "pnpm-lock.yaml" ]; then
+      git checkout --ours pnpm-lock.yaml
+      git add pnpm-lock.yaml
+      lockfile_conflict=1
+      unresolved=""
+    fi
+    if [ -n "$unresolved" ]; then
+      printf '\nConflicts merging %s (rerere had no resolution):\n%s\n\n' "$branch" "$unresolved"
+      printf 'Resolve them in %s, `git add` + `git commit --no-verify`,\n' "$WORKTREE"
+      printf 'then run `reflect-personal rebuild` again: rerere will replay it.\n'
+      exit 1
+    fi
+    # rerere resolved every conflict (and staged it): conclude the merge.
+    git commit --quiet --no-edit --no-verify
+  done
+
+  say "installing dependencies"
+  if [ "$lockfile_conflict" -eq 1 ] || ! pnpm install --frozen-lockfile; then
+    pnpm install
+    if [ -n "$(git status --porcelain pnpm-lock.yaml)" ]; then
+      git add pnpm-lock.yaml
+      git commit --quiet --no-verify -m "chore(personal): refresh the lockfile"
+    fi
+  fi
+  say "personal is $(git rev-parse --short HEAD), $(git rev-list --count "$UPSTREAM..HEAD") commits on $UPSTREAM"
+}
+
+cmd_build() {
+  ensure_worktree
+  cd "$WORKTREE"
+  say "building $APP from $(git rev-parse --short HEAD)"
+  # Just the .app: the DMG step scripts Finder and is not needed to run it.
+  pnpm tauri:build:dev --bundles app
+  say "built $BUNDLE"
+}
+
+cmd_install() {
+  [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+  if pgrep -xq "Reflect Dev"; then
+    die "quit Reflect Dev first"
+  fi
+  say "installing /Applications/$APP"
+  rm -rf "/Applications/$APP"
+  ditto "$BUNDLE" "/Applications/$APP"
+}
+
+cmd_push() {
+  say "pushing $BRANCH to $FORK_REMOTE"
+  # `personal` is regenerated on every rebuild, so it always needs a force.
+  git -C "$REPO" push --force-with-lease "$FORK_REMOTE" "$BRANCH"
+}
+
+case "${1:-}" in
+  status) cmd_status ;;
+  rebuild) cmd_rebuild ;;
+  build) cmd_build ;;
+  install) cmd_install ;;
+  push) cmd_push ;;
+  all) cmd_rebuild && cmd_build && cmd_install ;;
+  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
