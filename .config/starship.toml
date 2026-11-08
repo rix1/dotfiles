@@ -13,7 +13,7 @@ $character"""
 
 [username]
 show_always = true
-format = '[$user 🦄 ]($style)'
+format = '[$user]($style) [ 󰌢 mbp ](bold fg:black bg:cyan) '
 disabled = false
 
 [character]
