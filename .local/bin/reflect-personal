@@ -24,6 +24,9 @@ UPSTREAM=origin/master
 FORK_REMOTE="${REFLECT_FORK_REMOTE:-fork}"
 APP="Reflect Dev.app"
 BUNDLE="$WORKTREE/target/release/bundle/macos/$APP"
+# Every branch appends its item to the end of this list, so the branches
+# conflict there pairwise, and anew whenever upstream or a branch touches it.
+WHATS_NEW=packages/app/src/whats-new/whats-new-content.ts
 
 say() { printf '\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf 'reflect-personal: %s\n' "$*" >&2; exit 1; }
@@ -31,6 +34,24 @@ die() { printf 'reflect-personal: %s\n' "$*" >&2; exit 1; }
 branches() {
   git -C "$REPO" config --get-all personal.branch ||
     die "no branches listed; add one with: git -C $REPO config --add personal.branch feat/x"
+}
+
+# Resolve an append-only list by keeping both sides, ours (personal so far)
+# first. Fails, leaving the file as it was, if any conflict marker survives.
+keep_both() {
+  python3 - "$1" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+hunk = re.compile(
+    r'<<<<<<< [^\n]*\n(.*?)(?:\|\|\|\|\|\|\|[^\n]*\n.*?)?=======\n(.*?)>>>>>>> [^\n]*\n',
+    re.S,
+)
+resolved = hunk.sub(lambda m: m.group(1) + m.group(2), text)
+if re.search(r'^(<<<<<<<|=======|>>>>>>>)', resolved, re.M):
+    sys.exit(1)
+open(path, 'w').write(resolved)
+PY
 }
 
 ensure_worktree() {
@@ -59,27 +80,41 @@ cmd_rebuild() {
   [ -z "$(git status --porcelain)" ] || die "$WORKTREE has uncommitted changes"
   git checkout --quiet -B "$BRANCH" "$UPSTREAM"
 
-  local branch unresolved lockfile_conflict=0
+  local branch file unresolved lockfile_conflict=0
   for branch in $(branches); do
     say "merging $branch"
     if git merge --no-ff --no-edit --quiet "$branch"; then
       continue
     fi
-    unresolved="$(git diff --name-only --diff-filter=U)"
-    # The lockfile is regenerated below rather than merged by hand.
-    if [ "$unresolved" = "pnpm-lock.yaml" ]; then
-      git checkout --ours pnpm-lock.yaml
-      git add pnpm-lock.yaml
-      lockfile_conflict=1
-      unresolved=""
-    fi
+    # rerere has staged what it could; handle the known files, keep the rest.
+    unresolved=""
+    for file in $(git diff --name-only --diff-filter=U); do
+      case "$file" in
+        pnpm-lock.yaml)
+          # Regenerated below rather than merged by hand.
+          git checkout --ours pnpm-lock.yaml
+          git add pnpm-lock.yaml
+          lockfile_conflict=1
+          ;;
+        "$WHATS_NEW")
+          if keep_both "$file"; then
+            git add "$file"
+            say "kept both sides of $file"
+          else
+            unresolved="$unresolved$file"$'\n'
+          fi
+          ;;
+        *) unresolved="$unresolved$file"$'\n' ;;
+      esac
+    done
     if [ -n "$unresolved" ]; then
       printf '\nConflicts merging %s (rerere had no resolution):\n%s\n\n' "$branch" "$unresolved"
       printf 'Resolve them in %s, `git add` + `git commit --no-verify`,\n' "$WORKTREE"
       printf 'then run `reflect-personal rebuild` again: rerere will replay it.\n'
       exit 1
     fi
-    # rerere resolved every conflict (and staged it): conclude the merge.
+    # Every conflict is resolved and staged: conclude the merge (rerere
+    # records the resolutions made here too).
     git commit --quiet --no-edit --no-verify
   done
 
