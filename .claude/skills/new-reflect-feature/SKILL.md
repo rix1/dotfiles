@@ -82,8 +82,10 @@ file is a future conflict, so:
   Compiler, which rejects `??=`, `||=` and `&&=`; dev and `pnpm check` miss it.
 - A user-visible change gets a What's New item at the end of the current
   marketing version's list in
-  `packages/app/src/whats-new/whats-new-content.ts`. Every branch appends
-  there, so branches conflict pairwise in `personal`: resolve by keeping both.
+  `packages/app/src/whats-new/whats-new-content.ts`, with a stable `id` and
+  per-OS `platforms` (`['darwin', 'windows', 'linux']` for desktop). Every
+  branch appends there, so branches conflict pairwise in `personal`;
+  `reflect-personal rebuild` resolves that file by keeping both sides.
 - Then `reflect-personal all`. If `rebuild` stops on a conflict, resolve it in
   `~/Development/reflect-personal`, `git add`, `git commit --no-verify`, and
   run `rebuild` again (rerere records it).
