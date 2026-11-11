@@ -99,6 +99,8 @@ complete -c baton -n '__baton_in to' -l remote-control -d 'Start Claude there wi
 # pull [session]
 complete -c baton -n '__baton_at pull 1' -a '(__baton_sessions away)'
 complete -c baton -n '__baton_in pull' -l from -x -a '(__baton_machines)' -d 'Where the session is'
+complete -c baton -n '__baton_in pull' -l session -x -d 'A conversation there that baton is not tracking yet'
+complete -c baton -n '__baton_in pull' -l name -x -d 'Call a new session something other than its branch'
 
 # to and pull
 complete -c baton -n '__baton_in to pull' -l continue -d 'Claude picks up the task where it stopped'
