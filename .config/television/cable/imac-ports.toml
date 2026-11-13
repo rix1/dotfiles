@@ -1,0 +1,19 @@
+[metadata]
+name = "imac-ports"
+description = "Dev servers on the iMac, forwarded here; enter opens one in Chrome"
+requirements = ["fish", "ssh"]
+
+# Rows come from the imac-ports fish function: URL, command, cwd.
+# Running it is what opens the forwards, so the list is always reachable.
+[source]
+command = "fish -c imac-ports | grep '^http'"
+output = "{split: :0}"
+frecency = false
+
+[keybindings]
+enter = "actions:open"
+
+[actions.open]
+description = "Open the selected dev server in Chrome"
+command = "open -a 'Google Chrome' '{split: :0}'"
+mode = "execute"
