@@ -42,8 +42,7 @@ signing off for every agent commit, in any repo: it puts
   Claude Code skills, this file.
 - **`mbp`** and **`imac`** are *machine overlays*. Each is `main` plus a
   handful of commits with machine-specific values: AeroSpace gaps and borders,
-  Zed remote projects and prompt library, the Starship prompt symbol, the
-  `imac` SSH helper.
+  the Starship prompt symbol, the `imac` SSH helper.
 - The machine branches are **never merged into `main`** and never into each
   other. They are always **rebased on top of `main`**, so that `main..mbp`
   and `main..imac` stay short lists of overrides. Their history is rewritten
@@ -122,8 +121,8 @@ clone, `dotfiles-setup`, then fish); the steps and the reasons are in
 ## Committing to `main` from a machine
 
 `$HOME` has the machine branch checked out. **Do not `conf checkout main` in
-`$HOME`.** That rewrites live files (Zed's prompt database, AeroSpace config,
-`starship.toml`) underneath the programs using them, and deletes anything
+`$HOME`.** That rewrites live files (AeroSpace config, `starship.toml`)
+underneath the programs using them, and deletes anything
 only the machine branch tracks. A `conf rebase` in `$HOME` does the same
 thing for a moment. Commit through a linked worktree instead, then let
 `conf sync` put the machine branch back on top:
@@ -177,6 +176,10 @@ no borders`.
   `~/.gitignore`, the plugin list is in `fish_plugins` instead, and theme
   colours belong in `config.fish` (`fish_config theme choose`). Keep it out
   of every branch.
+- Zed's `settings.json`, `settings_backup.json` and `prompts/` (the prompt
+  library database). Zed rewrites them while it runs and they differ per
+  machine, so they were always dirty. They are in `~/.gitignore`; only
+  `keymap.json` and `snippets/` are tracked.
 
 ## Commit messages
 

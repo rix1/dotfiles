@@ -9,7 +9,7 @@ that keep each machine in sync and provisioned.
 - [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher). Comes with [git aliases](https://github.com/jhillyerd/plugin-git), [fzf](https://github.com/PatrickF1/fzf.fish) for easy search and [z](https://github.com/jethrokuan/z) for jumping around directories.
 - [Starship](https://starship.rs/) prompt, with a counter for LLM conversations in the current directory
 - [tmux](https://github.com/tmux/tmux) with resurrect and continuum
-- [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) settings and snippets
+- [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) keymap and snippets
 - git config, and a tiny font with the LLM logos the prompt uses
 - [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills` (`company-governance`, `dotfiles`, `grill-me`): reusable prompts plus the scripts they need
 - Bare repo with no symlinks for dotfiles 🎉

@@ -27,7 +27,7 @@ with those; leave pre-existing changes alone unless the user asks.
 | --- | --- |
 | A skill in `~/.claude/skills` that the user, or you in this session, wrote | `main` |
 | Fish functions, completions, tmux, television, git, docs, `~/.local/bin/dotfiles-*` | `main` |
-| A file `changes` tags with the machine branch (an overlay file: `starship.toml`, `config.fish`, aerospace, zed) | the machine branch. If the edit is something the other machine wants too, ask the user how to split it. |
+| A file `changes` tags with the machine branch (an overlay file: `starship.toml`, `config.fish`, aerospace) | the machine branch. If the edit is something the other machine wants too, ask the user how to split it. |
 | Skills installed from a marketplace or synced from claude.ai, caches, credentials, `fish_variables`, anything on the "Never commit" list in AGENTS.md | nowhere |
 
 Ask "would the other machine want this line?". If a candidate contains

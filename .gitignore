@@ -69,6 +69,10 @@ scripts/k8s-shell-custom.sh
 .config/1Password/
 .config/raycast/
 .config/zed/conversations/
+# Zed rewrites these constantly and they differ per machine
+.config/zed/settings.json
+.config/zed/settings_backup.json
+.config/zed/prompts/
 .config/tmux/plugins/
 .config/tmux/resurrect/
 .config/fish/functions/notify.fish
