@@ -54,7 +54,7 @@ auto-reload-config = true
 
 # Workspaces that stay alive (and in the menu bar) even when they're empty.
 # This is the set config-version 1 inferred from the alt-<key> bindings below.
-persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "C", "M"]
+persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "C", "M", "V", "B", "N"]
 
 # Per-app rules. AeroSpace runs the first callback whose `if` succeeds and skips
 # the rest. Find an app's ID with `aerospace list-apps`.
@@ -76,7 +76,7 @@ on-window-detected = [
     { if = 'test %{app-bundle-id} = app.reflect.desktop.dev', run = 'move-node-to-workspace 0' },
     # Notion Calendar
     { if = 'test %{app-bundle-id} = com.cron.electron', run = 'move-node-to-workspace C' },
-    { if = 'test %{app-bundle-id} = com.tinyspeck.slackmacgap', run = 'move-node-to-workspace S' },
+    { if = 'test %{app-bundle-id} = com.tinyspeck.slackmacgap', run = 'move-node-to-workspace N' },
 ]
 
 # Possible values: (qwerty|dvorak|colemak)
@@ -165,7 +165,7 @@ on-window-detected = [
     alt-9 = 'workspace 9'
     alt-0 = 'workspace 0'
     # alt-a = 'workspace A' # In your config, you can drop workspace bindings that you don't need
-    # alt-b = 'workspace B'
+    alt-b = 'workspace B'
     alt-c = 'workspace C'
     # alt-d = 'workspace D'
     # alt-e = 'workspace E'
@@ -173,15 +173,14 @@ on-window-detected = [
     # alt-g = 'workspace G'
     # alt-i = 'workspace I'
     alt-m = 'workspace M'
-    # alt-n = 'workspace N'
+    alt-n = 'workspace N'
     # alt-o = 'workspace O'
     # alt-p = 'workspace P'
     # alt-q = 'workspace Q'
     # alt-r = 'workspace R'
-    # alt-s = 'workspace S'
     # alt-t = 'workspace T'
     # alt-u = 'workspace U'
-    # alt-v = 'workspace V'
+    alt-v = 'workspace V'
     # alt-w = 'workspace W'
     # alt-x = 'workspace X'
     # alt-y = 'workspace Y'
@@ -199,7 +198,7 @@ on-window-detected = [
     alt-shift-9 = 'move-node-to-workspace 9'
     alt-shift-0 = 'move-node-to-workspace 0'
     # alt-shift-a = 'move-node-to-workspace A'
-    # alt-shift-b = 'move-node-to-workspace B'
+    alt-shift-b = 'move-node-to-workspace B'
     alt-shift-c = 'move-node-to-workspace C'
     # alt-shift-d = 'move-node-to-workspace D'
     # alt-shift-e = 'move-node-to-workspace E'
@@ -207,15 +206,14 @@ on-window-detected = [
     # alt-shift-g = 'move-node-to-workspace G'
     # alt-shift-i = 'move-node-to-workspace I'
     alt-shift-m = 'move-node-to-workspace M'
-    # alt-shift-n = 'move-node-to-workspace N'
+    alt-shift-n = 'move-node-to-workspace N'
     # alt-shift-o = 'move-node-to-workspace O'
     # alt-shift-p = 'move-node-to-workspace P'
     # alt-shift-q = 'move-node-to-workspace Q'
     # alt-shift-r = 'move-node-to-workspace R'
-    # alt-shift-s = 'move-node-to-workspace S'
     # alt-shift-t = 'move-node-to-workspace T'
     # alt-shift-u = 'move-node-to-workspace U'
-    # alt-shift-v = 'move-node-to-workspace V'
+    alt-shift-v = 'move-node-to-workspace V'
     # alt-shift-w = 'move-node-to-workspace W'
     # alt-shift-x = 'move-node-to-workspace X'
     # alt-shift-y = 'move-node-to-workspace Y'
