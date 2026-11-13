@@ -116,7 +116,7 @@ done'
         end
         set -l via
         test $have_l[$i] = $have_r[$i]; or set via "(remote $have_r[$i])"
-        echo "http://localhost:$have_l[$i]  $info $via"
+        echo "http://imac.localhost:$have_l[$i]  $info $via"
     end
     test (count $have_l) -gt 0; or echo "No dev servers listening on $host."
 end
