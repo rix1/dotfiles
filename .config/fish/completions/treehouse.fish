@@ -22,22 +22,29 @@ function __treehouse_worktrees
     end
 end
 
+# Pads a description to half the terminal width. Fish's pager picks the column
+# count itself; an entry wider than half the window forces one per line. The
+# padding is braille blanks (U+2800) because fish trims whitespace.
+function __treehouse_wide
+    string pad --right --char \u2800 --width (math -s0 "$COLUMNS / 2") -- "$argv"
+end
+
 function __treehouse_worktree_paths
     __treehouse_worktrees | while read -l -d \t name path wt_status branch
-        printf '%s\t%s\n' $path "$name: $wt_status, $branch"
+        printf '%s\t%s\n' $path (__treehouse_wide "$name: $wt_status, $branch")
     end
 end
 
 function __treehouse_worktree_names
     __treehouse_worktrees | while read -l -d \t name path wt_status branch
-        printf '%s\t%s\n' $name "$wt_status, $branch"
+        printf '%s\t%s\n' $name (__treehouse_wide "$wt_status, $branch")
     end
 end
 
 function __treehouse_pool_paths
     __treehouse_worktrees | while read -l -d \t name path wt_status branch
         # A worktree is <pool>/<name>/<repo>.
-        printf '%s\t%s\n' (path dirname (path dirname $path)) 'the whole pool, with --all'
+        printf '%s\t%s\n' (path dirname (path dirname $path)) (__treehouse_wide 'the whole pool, with --all')
     end | sort -u
 end
 
