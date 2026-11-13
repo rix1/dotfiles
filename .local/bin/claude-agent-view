@@ -2,9 +2,10 @@
 # Live, readable view of a Claude Code subagent transcript.
 #
 #   claude-agent-view FILE.jsonl   follow a subagent transcript in this terminal
-#   claude-agent-view --hook       SubagentStart hook: open a background Rex tab
-#                                  that follows the new subagent (reads hook JSON
-#                                  on stdin; does nothing outside Rex)
+#   claude-agent-view --hook       SubagentStart hook: follow the new subagent in a
+#                                  background Rex tab, one tab per Claude session
+#                                  with a split per subagent (reads hook JSON on
+#                                  stdin; does nothing outside Rex)
 set -eu
 
 follow() {
@@ -46,7 +47,38 @@ hook() {
 	done
 	[ -n "$name" ] || name="$agent_type"
 
-	rex window new -s "$REX_SESSION" "$name" --focus=false --keep-open -- "$0" "$transcript" >/dev/null
+	# Subagents started together fire their hooks at once; only one may create the tab.
+	mkdir -p "$dir"
+	lock="$dir/.rex-lock"
+	tries=0
+	while ! mkdir "$lock" 2>/dev/null; do
+		tries=$((tries + 1))
+		[ $tries -lt 100 ] || break
+		sleep 0.1
+	done
+	trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+
+	state="$dir/.rex-window"
+	window=""
+	[ -f "$state" ] && window=$(cat "$state")
+	if [ -n "$window" ] && layout=$(rex window inspect "$window" -s "$REX_SESSION" --json 2>/dev/null); then
+		# Split the largest pane, side by side while it is wide and stacked once it is
+		# not, so the tab fills as a grid instead of ever-thinner columns.
+		set -- $(printf '%s' "$layout" | jq -r '
+		  [.layers[] | select(.kind == "tiled") | .layout | .. | objects
+		   | select(has("block_id") and has("rect"))
+		   | {id: .block_id, w: .rect[2], h: .rect[3]}]
+		  | max_by(.w * .h)
+		  | "\(.id) \(if .w * 1.8 > .h * 1.6 then "right" else "below" end)"')
+		rex split -s "$REX_SESSION" -w "$window" -b "$1" --split="$2" --focus=false --keep-open \
+			--label "$name" -- "$0" "$transcript" >/dev/null
+	else
+		session=$(basename "${parent%.jsonl}")
+		created=$(rex window new -s "$REX_SESSION" "agenter ${session%%-*}" --focus=false --keep-open --json \
+			-- "$0" "$transcript")
+		printf '%s' "$created" | jq -r '.window_id' >"$state"
+		rex block rename "$(printf '%s' "$created" | jq -r '.block_ids[0]')" "$name" -s "$REX_SESSION" >/dev/null || true
+	fi
 }
 
 case "${1:-}" in
