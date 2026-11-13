@@ -18,6 +18,7 @@ brew "eza"
 brew "fd"
 brew "ripgrep"
 brew "git-delta"     # git core.pager
+brew "glow"          # markdown in the terminal
 brew "neovim"        # git core.editor
 brew "gnupg"         # commits are signed
 brew "pinentry-mac"
