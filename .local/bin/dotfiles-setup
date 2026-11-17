@@ -19,6 +19,7 @@
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop) and the claude-agent-view
 #               SubagentStart hook registered in ~/.claude/settings.json
+#               and tui set to default, so transcripts stay in the terminal scrollback
 #   signing     commit.gpgsign=false in the Claude Code and Codex shell environments (agents can't sign)
 
 set -uo pipefail
@@ -223,6 +224,17 @@ else
       tmp=$(mktemp) && jq --arg cmd "$cmd" \
         '.hooks //= {} | .hooks.SubagentStart //= [] | .hooks.SubagentStart += [{hooks: [{type: "command", command: $cmd, async: true, timeout: 15}]}]' \
         "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+    fi
+  fi
+  # Full-screen mode keeps the transcript inside Claude Code, where a
+  # read-only viewer such as RexPeek can't scroll it. The default mode writes
+  # it to the terminal's scrollback.
+  if [[ -f $SETTINGS ]] && jq -e '.tui == "default"' "$SETTINGS" >/dev/null 2>&1; then
+    ok "tui is default (transcript in terminal scrollback)"
+  else
+    act "set tui to default in ~/.claude/settings.json"
+    if ! (( DRY )); then
+      tmp=$(mktemp) && jq '.tui = "default"' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
     fi
   fi
 fi
