@@ -27,3 +27,5 @@ alias tree='eza -T'
 alias dserve='deno run --allow-net=:3000 --allow-read=. jsr:@std/http/file-server --port 3000 .'
 
 abbr --add djl djlint --reformat
+
+alias md=glow
