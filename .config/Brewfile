@@ -27,6 +27,7 @@ brew "tmux"
 brew "television"
 brew "uv"
 brew "yt-dlp"
+brew "jq"            # imac-ports reads rex JSON
 brew "displayplacer" # lowres
 
 cask "ghostty"

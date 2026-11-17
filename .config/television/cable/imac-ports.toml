@@ -1,9 +1,9 @@
 [metadata]
 name = "imac-ports"
 description = "Dev servers on the iMac, forwarded here; enter opens one in Chrome"
-requirements = ["fish", "ssh"]
+requirements = ["fish", "rex", "jq"]
 
-# Rows come from the imac-ports fish function: URL, command, cwd.
+# Rows come from the imac-ports fish function: URL, program, cwd.
 # Running it is what opens the forwards, so the list is always reachable.
 [source]
 command = "fish -c imac-ports | grep '^http'"
