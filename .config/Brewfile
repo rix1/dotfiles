@@ -27,6 +27,7 @@ brew "tmux"
 brew "television"
 brew "uv"
 brew "yt-dlp"
+brew "displayplacer" # lowres
 
 cask "ghostty"
 cask "aerospace"
