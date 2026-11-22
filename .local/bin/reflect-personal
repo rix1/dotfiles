@@ -164,7 +164,7 @@ cmd_rebuild() {
 
 cmd_build() {
   command -v cargo >/dev/null ||
-    die "cargo not found; install Rust (brew install rustup && rustup-init -y), then open a new shell"
+    die "cargo not found; install Rust (brew install rustup), then open a new shell"
   ensure_worktree
   cd "$WORKTREE"
   say "building $APP from $(git rev-parse --short HEAD)"
