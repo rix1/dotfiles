@@ -16,14 +16,29 @@ not upstream merges them; upstream PRs are opened only when the user asks.
 | Main checkout | `~/Development/reflect-open` (`origin` = team-reflect, `fork` = rix1/reflect-open, public) |
 | Integration branch | `personal`, in worktree `~/Development/reflect-personal`. Generated, never edited by hand |
 | Branch list | `git -C ~/Development/reflect-open config --get-all personal.branch` (merge order) |
-| Script | `reflect-personal status \| rebuild \| build \| install \| push \| all` (`~/.local/bin`, in dotfiles) |
+| Script | `reflect-personal status \| rebuild \| build \| install [--latest] \| push \| publish \| all` (`~/.local/bin`, in dotfiles) |
 | Built app | `~/Development/reflect-personal/target/release/bundle/macos/Reflect Dev.app` |
+| Published builds | prereleases `personal-<shortsha>` on rix1/reflect-open, asset `Reflect-Dev.zip` |
+| Machines | The MacBook alone rebases, rebuilds, builds and publishes. Other machines (the iMac) only run `reflect-personal install --latest` |
 
 `rebuild` resets `personal` to `origin/master` and merges each listed branch.
 git rerere is on (with autoupdate), so a conflict resolved once is replayed
 on every later rebuild. "Reflect Dev" has its own bundle id and a no-op
 updater feed, so it sits beside official Reflect and is never overwritten by
 an update. Warn the user not to open the same graph in both apps at once.
+
+The checkout needs `origin` = team-reflect and `fork` = rix1; a plain
+`gh repo clone` of the fork names them `origin`/`upstream`, and the script
+refuses to run until they are renamed. `personal.branch` config and the
+rerere cache live in the clone, which is one more reason only the MacBook
+rebuilds: its rerere cache holds the resolutions.
+
+Upstream's layout as of late 2026: the app is `apps/web/src` (it was
+`apps/desktop/src`), Tauri is `apps/tauri`, and commands are declared in
+`packages/app/src/commands/app-commands.ts` (id, title, keybinding;
+`app-menu.ts` for the native menu) with handlers registered by
+`useCommandHandler` in `apps/web/src/commands/use-*-commands.ts` or in the
+feature's own provider.
 
 Read `AGENTS.md` in the repo before writing code, every time: it holds the
 architecture (services, stores, commands) and conventions this skill does
@@ -47,7 +62,7 @@ Upstream lands roughly 80 commits a week. Every line changed in an upstream
 file is a future conflict, so:
 
 - **New logic goes in new files.** Prefer a feature folder, as with
-  `apps/desktop/src/focus-mode/` (`perf-hud/` is the upstream precedent).
+  `apps/web/src/focus-mode/` (`perf-hud/` is the upstream precedent).
   Give it its own CSS, imported by the module (`import './x.css'`, like
   `swipe-row.css`), its own settings hooks (call `useSelector` with
   module-level selectors; inline selectors are not stable), and a schema
@@ -78,8 +93,11 @@ file is a future conflict, so:
   `fnm exec --using=24 -- pnpm test --run`. A browser test queried by role
   can't see `display: none` elements; query by attribute for "is hidden"
   checks.
-- `cd apps/desktop && pnpm exec vite build`. Production builds run React
+- `cd apps/web && pnpm exec vite build`. Production builds run React
   Compiler, which rejects `??=`, `||=` and `&&=`; dev and `pnpm check` miss it.
+- `pnpm check`'s knip step flags untracked generated files
+  (`apps/extension/.wxt/...`) and eslint trips on untracked scratch folders;
+  those are environmental, not the branch.
 - A user-visible change gets a What's New item at the end of the current
   marketing version's list in
   `packages/app/src/whats-new/whats-new-content.ts`, with a stable `id` and
@@ -98,7 +116,28 @@ with `git rebase origin/master` in its worktree. When upstream rewrote the
 area, port the feature onto the new architecture rather than forcing the old
 code through. Afterwards run the checks again and `reflect-personal all`.
 
-## Publishing
+## Publishing builds
+
+On the MacBook, after `reflect-personal all` (or `build`) succeeds:
+`reflect-personal publish`. It pushes `personal` (forced) and
+fast-forwards the fork's `master` to `origin/master` (a plain push that fails
+rather than forcing if they diverge), zips the app with
+`ditto -c -k --keepParent`, and creates the prerelease `personal-<shortsha>`
+targeting that commit, with the merged branches and their SHAs as notes. It
+refuses a build that isn't from the current `personal` HEAD, and keeps the
+newest five `personal-*` releases (`REFLECT_KEEP_RELEASES`). No CI: builds
+are uploaded from the MacBook only.
+
+On any other machine: `reflect-personal install --latest` downloads the
+newest `personal-*` release with gh, unzips it and installs it into
+/Applications (quit Reflect Dev first). It needs only gh, not Rust or pnpm,
+and no clone. gh downloads are not quarantined, so the ad-hoc-signed app
+opens; the script warns if it ever is quarantined.
+
+Don't force-push `personal` until a new rebuild has succeeded: the fork's
+copy is the only record of the last good build.
+
+## Publishing branches
 
 - Commit freely on feature branches. Never rewrite published history without
   asking. The user's permission mode blocks `git commit --amend`; add a commit
