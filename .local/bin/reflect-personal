@@ -31,6 +31,37 @@ WHATS_NEW=packages/app/src/whats-new/whats-new-content.ts
 say() { printf '\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf 'reflect-personal: %s\n' "$*" >&2; exit 1; }
 
+# The repo's remotes must be `origin` = team-reflect and `$FORK_REMOTE` = the
+# fork. A plain `gh repo clone` of the fork names them origin/upstream instead,
+# which silently builds on the fork's stale master.
+check_remotes() {
+  case "$(git -C "$REPO" remote get-url origin 2>/dev/null)" in
+    *team-reflect/reflect-open*) ;;
+    *) die "remote 'origin' in $REPO must be team-reflect/reflect-open; fix with:
+  git -C $REPO remote rename origin $FORK_REMOTE && git -C $REPO remote rename upstream origin" ;;
+  esac
+  git -C "$REPO" remote get-url "$FORK_REMOTE" >/dev/null 2>&1 ||
+    die "no '$FORK_REMOTE' remote in $REPO; add the fork: git -C $REPO remote add $FORK_REMOTE <url>"
+}
+
+fetch() {
+  check_remotes
+  git -C "$REPO" fetch --quiet origin
+  git -C "$REPO" fetch --quiet "$FORK_REMOTE"
+}
+
+# A listed branch, or its copy on the fork when there is no local branch
+# (a fresh clone has none).
+ref_for() {
+  if git -C "$REPO" rev-parse --verify --quiet "refs/heads/$1" >/dev/null; then
+    echo "$1"
+  elif git -C "$REPO" rev-parse --verify --quiet "refs/remotes/$FORK_REMOTE/$1" >/dev/null; then
+    echo "$FORK_REMOTE/$1"
+  else
+    die "branch $1 is neither local nor on $FORK_REMOTE"
+  fi
+}
+
 branches() {
   git -C "$REPO" config --get-all personal.branch ||
     die "no branches listed; add one with: git -C $REPO config --add personal.branch feat/x"
@@ -57,24 +88,26 @@ PY
 ensure_worktree() {
   if [ ! -d "$WORKTREE" ]; then
     say "creating worktree $WORKTREE"
-    git -C "$REPO" worktree add -B "$BRANCH" "$WORKTREE" "$UPSTREAM"
+    git -C "$REPO" worktree add -B "$BRANCH" "$WORKTREE" "$UPSTREAM" ||
+      die "could not create $WORKTREE (is \`$BRANCH\` checked out in $REPO? switch that checkout to master)"
   fi
 }
 
 cmd_status() {
-  git -C "$REPO" fetch --quiet origin
-  local branch
+  fetch
+  local branch ref
   for branch in $(branches); do
+    ref="$(ref_for "$branch")"
     printf '%-40s ahead %3s  behind %4s\n' "$branch" \
-      "$(git -C "$REPO" rev-list --count "$UPSTREAM..$branch")" \
-      "$(git -C "$REPO" rev-list --count "$branch..$UPSTREAM")"
+      "$(git -C "$REPO" rev-list --count "$UPSTREAM..$ref")" \
+      "$(git -C "$REPO" rev-list --count "$ref..$UPSTREAM")"
   done
 }
 
 cmd_rebuild() {
   git -C "$REPO" config rerere.enabled true
   git -C "$REPO" config rerere.autoupdate true
-  git -C "$REPO" fetch --quiet origin
+  fetch
   ensure_worktree
   cd "$WORKTREE"
   [ -z "$(git status --porcelain)" ] || die "$WORKTREE has uncommitted changes"
@@ -83,7 +116,7 @@ cmd_rebuild() {
   local branch file unresolved lockfile_conflict=0
   for branch in $(branches); do
     say "merging $branch"
-    if git merge --no-ff --no-edit --quiet "$branch"; then
+    if git merge --no-ff --no-edit --quiet "$(ref_for "$branch")"; then
       continue
     fi
     # rerere has staged what it could; handle the known files, keep the rest.
@@ -130,6 +163,8 @@ cmd_rebuild() {
 }
 
 cmd_build() {
+  command -v cargo >/dev/null ||
+    die "cargo not found; install Rust (brew install rustup && rustup-init -y), then open a new shell"
   ensure_worktree
   cd "$WORKTREE"
   say "building $APP from $(git rev-parse --short HEAD)"
@@ -160,6 +195,8 @@ case "${1:-}" in
   build) cmd_build ;;
   install) cmd_install ;;
   push) cmd_push ;;
-  all) cmd_rebuild && cmd_build && cmd_install ;;
+  # Separate statements, not `a && b`: bash ignores `set -e` inside a function
+  # that runs as part of an && list, so a failed step would not stop the rest.
+  all) cmd_rebuild; cmd_build; cmd_install ;;
   *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
