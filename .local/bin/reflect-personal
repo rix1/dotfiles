@@ -6,12 +6,17 @@
 # (`personal.branch`, in order). git rerere replays conflict resolutions
 # recorded on earlier rebuilds, so a conflict only needs resolving once.
 #
-#   reflect-personal status     each branch's distance from upstream
-#   reflect-personal rebuild    reset `personal` to upstream and merge the branches
-#   reflect-personal build      build "Reflect Dev.app" from `personal`
-#   reflect-personal install    copy the built app into /Applications
-#   reflect-personal push       back `personal` up to the fork
-#   reflect-personal all        rebuild, build, install
+# One machine (the MacBook) rebuilds, builds and publishes. Every other
+# machine only runs `install --latest`, which needs gh but no Rust or pnpm.
+#
+#   reflect-personal status            each branch's distance from upstream
+#   reflect-personal rebuild           reset `personal` to upstream and merge the branches
+#   reflect-personal build             build "Reflect Dev.app" from `personal`
+#   reflect-personal install           copy the built app into /Applications
+#   reflect-personal push              push `personal`, fast-forward the fork's master
+#   reflect-personal publish           push, then upload the build as a GitHub prerelease
+#   reflect-personal install --latest  download the newest published build and install it
+#   reflect-personal all               rebuild, build, install
 #
 # Branches:  git -C ~/Development/reflect-open config --add personal.branch feat/x
 #            git -C ~/Development/reflect-open config --get-all personal.branch
@@ -22,8 +27,15 @@ WORKTREE="${REFLECT_PERSONAL_WORKTREE:-$HOME/Development/reflect-personal}"
 BRANCH=personal
 UPSTREAM=origin/master
 FORK_REMOTE="${REFLECT_FORK_REMOTE:-fork}"
+FORK_REPO="${REFLECT_FORK_REPO:-rix1/reflect-open}"
 APP="Reflect Dev.app"
 BUNDLE="$WORKTREE/target/release/bundle/macos/$APP"
+# The commit the bundle was built from, written next to it (not inside, which
+# would break the signature) so `publish` can refuse a stale build.
+BUILT_FROM="$WORKTREE/target/release/bundle/macos/.built-from"
+ZIP_NAME=Reflect-Dev.zip
+# Published builds kept on GitHub; older personal-* releases are deleted.
+KEEP_RELEASES="${REFLECT_KEEP_RELEASES:-5}"
 # Every branch appends its item to the end of this list, so the branches
 # conflict there pairwise, and anew whenever upstream or a branch touches it.
 WHATS_NEW=packages/app/src/whats-new/whats-new-content.ts
@@ -110,7 +122,7 @@ cmd_rebuild() {
   fetch
   ensure_worktree
   cd "$WORKTREE"
-  [ -z "$(git status --porcelain)" ] || die "$WORKTREE has uncommitted changes"
+  [ -z "$(git status --porcelain --untracked-files=no)" ] || die "$WORKTREE has uncommitted changes"
   git checkout --quiet -B "$BRANCH" "$UPSTREAM"
 
   local branch file unresolved lockfile_conflict=0
@@ -169,34 +181,139 @@ cmd_build() {
   cd "$WORKTREE"
   say "building $APP from $(git rev-parse --short HEAD)"
   # Just the .app: the DMG step scripts Finder and is not needed to run it.
+  local sha
+  sha="$(git rev-parse HEAD)"
   pnpm tauri:build:dev --bundles app
+  echo "$sha" >"$BUILT_FROM"
   say "built $BUNDLE"
 }
 
-cmd_install() {
-  [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+# A scratch dir removed on exit. Global: the EXIT trap runs after any
+# function-local variable is gone.
+make_tmp() {
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+}
+
+quit_check() {
   if pgrep -xq "Reflect Dev"; then
     die "quit Reflect Dev first"
   fi
+}
+
+# Copy an app bundle into /Applications.
+install_app() {
+  quit_check
   say "installing /Applications/$APP"
   rm -rf "/Applications/$APP"
-  ditto "$BUNDLE" "/Applications/$APP"
+  ditto "$1" "/Applications/$APP"
+  if xattr -p com.apple.quarantine "/Applications/$APP" >/dev/null 2>&1; then
+    printf 'note: the app is quarantined, so Gatekeeper may refuse the ad-hoc signature.\n'
+    printf '      clear it with: xattr -dr com.apple.quarantine "/Applications/%s"\n' "$APP"
+  fi
+}
+
+cmd_install() {
+  case "${1:-}" in
+    --latest) install_latest ;;
+    "")
+      [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+      install_app "$BUNDLE"
+      ;;
+    *) die "unknown install option: $1" ;;
+  esac
+}
+
+# The newest personal-* release on the fork.
+latest_release() {
+  gh release list -R "$FORK_REPO" --limit 100 --json tagName,createdAt \
+    --jq '[.[] | select(.tagName | startswith("personal-"))] | sort_by(.createdAt) | last | .tagName // empty'
+}
+
+install_latest() {
+  command -v gh >/dev/null || die "gh not found; brew install gh, then gh auth login"
+  quit_check
+  local tag
+  tag="$(latest_release)"
+  [ -n "$tag" ] || die "no personal-* release on $FORK_REPO; publish one from the MacBook"
+  make_tmp
+  say "downloading $tag"
+  gh release download "$tag" -R "$FORK_REPO" -p "$ZIP_NAME" -D "$tmp"
+  ditto -x -k "$tmp/$ZIP_NAME" "$tmp/app"
+  [ -d "$tmp/app/$APP" ] || die "$ZIP_NAME in $tag holds no $APP"
+  install_app "$tmp/app/$APP"
+  say "installed $tag"
 }
 
 cmd_push() {
+  check_remotes
   say "pushing $BRANCH to $FORK_REMOTE"
   # `personal` is regenerated on every rebuild, so it always needs a force.
   git -C "$REPO" push --force-with-lease "$FORK_REMOTE" "$BRANCH"
+  # Keep the fork's master on upstream. A plain push: if the two ever
+  # diverge it fails instead of overwriting anything.
+  say "fast-forwarding $FORK_REMOTE/master to $UPSTREAM"
+  git -C "$REPO" push "$FORK_REMOTE" "$UPSTREAM:refs/heads/master" ||
+    die "$FORK_REMOTE/master has commits $UPSTREAM lacks; sort that out by hand"
+}
+
+# Release notes: upstream base plus each branch merged into personal, with
+# the SHA that was merged.
+release_notes() {
+  local sha
+  sha="$(git -C "$WORKTREE" rev-parse --short HEAD)"
+  printf 'Personal build of `%s` on upstream `%s`.\n\n' \
+    "$sha" "$(git -C "$WORKTREE" merge-base HEAD "$UPSTREAM" | cut -c1-9)"
+  printf 'Merged branches, in order:\n\n'
+  git -C "$WORKTREE" log --reverse --first-parent --merges --format='%P%x09%s' "$UPSTREAM..HEAD" |
+    while IFS=$'\t' read -r parents subject; do
+      branch="$(sed -E "s/^Merge (remote-tracking )?branch '([^']+)'.*/\\2/" <<<"$subject")"
+      printf -- '- `%s` @ `%s`\n' "${branch#"$FORK_REMOTE"/}" "$(cut -d' ' -f2 <<<"$parents" | cut -c1-9)"
+    done
+}
+
+cmd_publish() {
+  command -v gh >/dev/null || die "gh not found; brew install gh, then gh auth login"
+  [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+  local sha short tag old
+  sha="$(git -C "$WORKTREE" rev-parse HEAD)"
+  short="$(git -C "$WORKTREE" rev-parse --short HEAD)"
+  [ "$(cat "$BUILT_FROM" 2>/dev/null)" = "$sha" ] ||
+    die "the build is not from $BRANCH ($short); run: reflect-personal build"
+  [ -z "$(git -C "$WORKTREE" status --porcelain --untracked-files=no)" ] || die "$WORKTREE has uncommitted changes"
+  tag="personal-$short"
+  if gh release view "$tag" -R "$FORK_REPO" >/dev/null 2>&1; then
+    die "release $tag already exists"
+  fi
+
+  cmd_push
+
+  make_tmp
+  say "zipping $APP"
+  ditto -c -k --keepParent "$BUNDLE" "$tmp/$ZIP_NAME"
+  release_notes >"$tmp/notes.md"
+  say "creating release $tag"
+  gh release create "$tag" "$tmp/$ZIP_NAME" -R "$FORK_REPO" --prerelease \
+    --target "$sha" --title "$tag" --notes-file "$tmp/notes.md"
+
+  # Prune all but the newest $KEEP_RELEASES personal-* releases.
+  gh release list -R "$FORK_REPO" --limit 100 --json tagName,createdAt \
+    --jq "[.[] | select(.tagName | startswith(\"personal-\"))] | sort_by(.createdAt) | reverse | .[$KEEP_RELEASES:] | .[].tagName" |
+    while read -r old; do
+      say "deleting old release $old"
+      gh release delete "$old" -R "$FORK_REPO" --yes --cleanup-tag
+    done
 }
 
 case "${1:-}" in
   status) cmd_status ;;
   rebuild) cmd_rebuild ;;
   build) cmd_build ;;
-  install) cmd_install ;;
+  install) cmd_install "${2:-}" ;;
   push) cmd_push ;;
+  publish) cmd_publish ;;
   # Separate statements, not `a && b`: bash ignores `set -e` inside a function
   # that runs as part of an && list, so a failed step would not stop the rest.
   all) cmd_rebuild; cmd_build; cmd_install ;;
-  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
