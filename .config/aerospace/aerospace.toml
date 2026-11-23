@@ -67,11 +67,8 @@ on-window-detected = [
     { if = 'test %{app-bundle-id} = com.spotify.client', run = 'move-node-to-workspace 4' },
     { if = 'test %{app-bundle-id} = com.linear', run = 'move-node-to-workspace 8' },
     { if = 'test %{app-bundle-id} = com.superhuman.electron', run = 'move-node-to-workspace 9' },
-    # Reflect and Reflect Dev (personal build)
-    { if = 'test %{app-bundle-id} = app.reflect.desktop', run = 'move-node-to-workspace 0' },
+    # Reflect Dev (personal build)
     { if = 'test %{app-bundle-id} = app.reflect.desktop.dev', run = 'move-node-to-workspace 0' },
-    # Notion Calendar
-    { if = 'test %{app-bundle-id} = com.cron.electron', run = 'move-node-to-workspace C' },
     { if = 'test %{app-bundle-id} = com.tinyspeck.slackmacgap', run = 'move-node-to-workspace N' },
 ]
 
