@@ -19,7 +19,7 @@
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
 #   ssh         ~/.ssh/config uses the 1Password agent, ~/.config/ssh/authorized_keys trusted;
 #               checks (does not change) the agent toggle, Remote Login and Tailscale
-#   claude      dotfiles skill hooks (UserPromptSubmit, Stop) and the claude-agent-view
+#   claude      dotfiles skill hooks (UserPromptSubmit, Stop), the claude-statusline status line, the claude-agent-view
 #               SubagentStart hook registered in ~/.claude/settings.json
 #               and tui set to default, so transcripts stay in the terminal scrollback
 #   signing     commit.gpgsign=false in the Claude Code and Codex shell environments (agents can't sign)
@@ -275,6 +275,20 @@ else
       cmd="h=\$HOME/.local/bin/claude-agent-view; [ -x \"\$h\" ] && exec \"\$h\" --hook; exit 0"
       tmp=$(mktemp) && jq --arg cmd "$cmd" \
         '.hooks //= {} | .hooks.SubagentStart //= [] | .hooks.SubagentStart += [{hooks: [{type: "command", command: $cmd, async: true, timeout: 15}]}]' \
+        "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+    fi
+  fi
+  # Status line: model · effort · working directory. Leaves any other
+  # statusLine alone.
+  if [[ ! -x $H/.local/bin/claude-statusline ]]; then skip "no ~/.local/bin/claude-statusline"
+  elif [[ -f $SETTINGS ]] && jq -e '.statusLine.command // "" | contains("claude-statusline")' "$SETTINGS" >/dev/null 2>&1; then
+    ok "statusLine is claude-statusline"
+  elif [[ -f $SETTINGS ]] && jq -e '.statusLine != null' "$SETTINGS" >/dev/null 2>&1; then
+    skip "statusLine already set to something else; leaving it"
+  else
+    act "set statusLine to claude-statusline in ~/.claude/settings.json"
+    if ! (( DRY )); then
+      tmp=$(mktemp) && jq '.statusLine = {type: "command", command: "~/.local/bin/claude-statusline"}' \
         "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
     fi
   fi

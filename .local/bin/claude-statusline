@@ -1,0 +1,12 @@
+#!/bin/bash
+# claude-statusline — Claude Code status line: model · effort · working directory.
+#
+# Claude Code pipes the session as JSON on stdin (code.claude.com/docs/en/statusline).
+# `effort` is absent on models without the effort parameter, so it is optional.
+# Registered as statusLine in ~/.claude/settings.json by dotfiles-setup.
+jq -r --arg home "$HOME" '
+  [ .model.display_name,
+    .effort.level,
+    ((.workspace.current_dir // .cwd) | sub("^" + $home; "~")) ]
+  | map(select(. != null and . != "")) | join("  ·  ")
+' | { IFS= read -r line; printf '\033[2m%s\033[0m\n' "$line"; }
