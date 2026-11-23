@@ -1,0 +1,37 @@
+#!/bin/bash
+# aerospace-grow — Rectangle-style "Larger"/"Smaller" for AeroSpace.
+#
+#   aerospace-grow +80    grow the focused window by 80 px in each dimension
+#   aerospace-grow -80    shrink it
+#
+# A floating window is resized around its centre through System Events
+# (AeroSpace's own `resize` only moves tiling splits). A tiled window falls
+# back to `aerospace resize smart`. Bound to ctrl-alt-equal / ctrl-alt-minus in
+# aerospace.toml; the first run asks for Automation access to System Events.
+set -euo pipefail
+
+step=${1:?usage: aerospace-grow +N|-N}
+export PATH="/opt/homebrew/bin:$PATH"
+
+layout=$(aerospace list-windows --focused --format '%{window-layout}' 2>/dev/null || true)
+if [[ $layout != floating ]]; then
+	exec aerospace resize smart "$step"
+fi
+
+osascript - "$step" <<'EOF'
+on run argv
+	set d to (item 1 of argv) as integer
+	tell application "System Events"
+		tell (first application process whose frontmost is true)
+			set w to window 1
+			set {x, y} to position of w
+			set {wd, ht} to size of w
+			set nw to wd + d
+			set nh to ht + d
+			if nw < 200 or nh < 150 then return
+			set position of w to {x - (d div 2), y - (d div 2)}
+			set size of w to {nw, nh}
+		end tell
+	end tell
+end run
+EOF
