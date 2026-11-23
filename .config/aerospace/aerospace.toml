@@ -59,9 +59,11 @@ on-window-detected = [
     # Search browser: the small window that links from other apps open in has an
     # empty title. It floats on the workspace you clicked the link on, as long as the
     # link arrives through Link Router (the default browser) and not straight from macOS.
+    # Keep this above the rule that sends Search's other windows to workspace 1.
     { if = "test %{app-bundle-id} = com.officecommun.search && test %{window-title} ~= '^$'", run = 'layout floating' },
 
     # Automatic workspace assignment
+    { if = 'test %{app-bundle-id} = com.officecommun.search', run = 'move-node-to-workspace 1' },
     { if = 'test %{app-bundle-id} = dev.zed.Zed', run = 'move-node-to-workspace C' },
     { if = 'test %{app-bundle-id} = com.mitchellh.ghostty', run = ['layout floating', 'move-node-to-workspace 3'] },
     { if = 'test %{app-bundle-id} = com.spotify.client', run = 'move-node-to-workspace 4' },
