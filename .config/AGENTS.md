@@ -104,8 +104,9 @@ provisioning: Homebrew present, everything in `~/.config/Brewfile` installed
 (`brew bundle`, never upgrades or removes), fish >= 4 as the login shell,
 fisher plugins from `fish_plugins`, tpm and the tmux plugins, fonts from
 `~/.config/fonts` into `~/Library/Fonts`, the Ghostty `font-codepoint-map`
-line, the Starship counter binary, the Claude Code hooks, and unsigned agent
-commits. Every step
+line, the Starship counter binary, SSH through the 1Password agent (it checks,
+but cannot flip, the agent toggle, Remote Login and Tailscale), the Claude
+Code hooks, and unsigned agent commits. Every step
 checks before acting, so run it whenever. A CLI tool that fish config,
 functions or aliases call belongs in the Brewfile (on `main`).
 

@@ -35,6 +35,8 @@ come up along the way:
 - your GPG key, because commits are signed (`.gitconfig` has
   `commit.gpgsign = true`). If it lives on Keybase, see
   [this guide](https://blog.scottlowe.org/2017/09/06/using-keybase-gpg-macos/).
+- your 1Password login. The SSH key the Macs use to reach each other lives
+  only in 1Password, so you never run `ssh-keygen` on a new Mac.
 
 ### Why the order matters
 
@@ -96,6 +98,7 @@ these steps in order, and each one checks before it acts:
 | fonts        | copies `~/.config/fonts/*.otf` to `~/Library/Fonts`                          |
 | ghostty      | adds the `font-codepoint-map` line for the LLM logo glyphs                   |
 | starship     | builds the conversation counter with `rustc`, or links the Python fallback   |
+| ssh          | points `~/.ssh/config` at the 1Password agent, trusts `~/.config/ssh/authorized_keys`; checks the switches in step 8 |
 | claude hooks | registers the dotfiles skill hooks in `~/.claude/settings.json`              |
 
 **5. Switch to fish.** Quit Terminal and open Ghostty, which was installed in
@@ -122,6 +125,25 @@ conf sync                       # pushes a new machine branch; afterwards just r
 
 Import your GPG key before your first commit (see "What you start with").
 
+**8. SSH between the Macs.** One key, "SSH – Macs", lives in 1Password and
+every Mac trusts it. [`agent.toml`](../.config/1Password/ssh/agent.toml) makes
+the 1Password agent offer only that key, and `conf setup` has already written
+`~/.ssh/config` and `authorized_keys`. Three switches have no reliable CLI, so
+flip them by hand; `conf setup` reports which are still off:
+
+- 1Password: sign in, then Settings → Developer → **Use the SSH agent**.
+  Quit and reopen 1Password once, so it picks up `agent.toml`.
+- System Settings → General → Sharing → **Remote Login**.
+- [Tailscale](https://tailscale.com/download): install and log in. Leave
+  Tailscale SSH off; plain sshd with the key is what the Macs use.
+
+Then check both directions from the other Mac and from this one. Both must
+work with 1Password unlocked, without a password prompt:
+
+```fish
+ssh -o BatchMode=yes <other-mac> true; and echo ok
+```
+
 ## Day to day
 
 Every machine has its own branch (`mbp`, `imac`) that is `main` plus a few
@@ -145,12 +167,14 @@ $HOME
 │      ├── AGENTS.md      # How the repo works: branches, conf, what to commit where
 │      ├── Brewfile       # What every machine needs; installed by dotfiles-setup
 │      ├── README.md      # What the tools do
+│      ├── 1Password/ssh/agent.toml   # the one key the SSH agent offers
 │      ├── aerospace/
 │      ├── bin/ src/      # Starship conversation counter (Rust, Python fallback), vtt2text
 │      ├── fish/
 │      ├── fonts/         # LLM Logos font and its build script
 │      ├── gh/ git/       # gh config, global gitignore
 │      ├── pgcli/ litecli/
+│      ├── ssh/authorized_keys      # public keys every Mac trusts
 │      ├── starship.toml
 │      ├── television/
 │      ├── tmux/
