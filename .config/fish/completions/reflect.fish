@@ -1,4 +1,4 @@
-# Reflect CLI (bundled in Reflect.app). Note names come from `reflect search`,
+# Reflect CLI (bundled in Reflect Dev.app, the personal build). Note names come from `reflect search`,
 # so private notes never show up.
 
 function __reflect_notes
