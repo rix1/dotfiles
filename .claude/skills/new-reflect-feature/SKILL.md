@@ -24,8 +24,11 @@ not upstream merges them; upstream PRs are opened only when the user asks.
 `rebuild` resets `personal` to `origin/master` and merges each listed branch.
 git rerere is on (with autoupdate), so a conflict resolved once is replayed
 on every later rebuild. "Reflect Dev" has its own bundle id and a no-op
-updater feed, so it sits beside official Reflect and is never overwritten by
-an update. Warn the user not to open the same graph in both apps at once.
+updater feed, so an update never overwrites it. It is the only Reflect
+installed. `~/.local/bin/reflect` (in dotfiles) links to the CLI inside the
+app. The per-graph agent skill in `~/.agents/skills/reflect-<graph>` is
+written by the app with its own path baked in: refresh it from Settings →
+Agents ("Update skill"), never by hand, or the app treats it as a conflict.
 
 The checkout needs `origin` = team-reflect and `fork` = rix1; a plain
 `gh repo clone` of the fork names them `origin`/`upstream`, and the script
