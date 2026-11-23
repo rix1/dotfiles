@@ -6,15 +6,17 @@ that keep each machine in sync and provisioned.
 
 ## What's included?
 
-- [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher). Comes with [git aliases](https://github.com/jhillyerd/plugin-git), [fzf](https://github.com/PatrickF1/fzf.fish) for easy search and [z](https://github.com/jethrokuan/z) for jumping around directories.
-- [Starship](https://starship.rs/) prompt, with a counter for LLM conversations in the current directory
-- [tmux](https://github.com/tmux/tmux) with resurrect and continuum
-- [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) keymap and snippets
-- git config, and a tiny font with the LLM logos the prompt uses
-- [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills` (`company-governance`, `dotfiles`, `grill-me`): reusable prompts plus the scripts they need
-- Bare repo with no symlinks for dotfiles 🎉
+![Rex with fish, Starship and Claude Code](https://github.com/user-attachments/assets/9aa71898-a9d7-46a2-8024-cf47eb5682b6)
 
-![example](https://user-images.githubusercontent.com/2470775/227767097-0907205d-33ee-4566-8a76-22621d1b985b.png)
+- [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher). Comes with [git aliases](https://github.com/jhillyerd/plugin-git), [fzf](https://github.com/PatrickF1/fzf.fish) for easy search and [z](https://github.com/jethrokuan/z) for jumping around directories, plus a pile of small functions.
+- [Starship](https://starship.rs/) prompt, with a counter for LLM conversations in the current directory, drawn with a tiny font of LLM logos
+- [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) keymap and snippets
+- Scripts in `~/.local/bin`: `repo-status` (every repo under a folder, sorted by what needs attention), `claude-agent-view` (follow a Claude Code subagent in its own pane), `reflect-personal` (build my own [Reflect](https://reflect.app) from feature branches)
+- [Claude Code](https://claude.com/claude-code) skills in `~/.claude/skills`, among them `dotfiles` (commits to this repo), `grill-me` (stress-test a plan), `under-construction` (pick up Slack messages I flagged to build) and `company-governance` (research a company's board and cap table)
+- git with [delta](https://github.com/dandavison/delta), neovim, and the CLI tools the above relies on, all in one [Brewfile](../.config/Brewfile)
+
+The terminal is [Rex](https://www.superlogical.com/rex/docs/installation). tmux config and its pickers are still here, but no
+longer the daily driver.
 
 ## Setting up a new Mac
 
@@ -120,20 +122,17 @@ conf sync                       # pushes a new machine branch; afterwards just r
 
 Import your GPG key before your first commit (see "What you start with").
 
-### Day to day
-
-`conf sync` rebases this machine's branch onto `main`, pushes it, and runs
-`conf setup` (`dotfiles-setup`). Both are idempotent, so run them whenever. A
-tool that every machine needs goes in the Brewfile, and the next `conf sync`
-installs it everywhere.
-
-## Updating your dotfiles
+## Day to day
 
 Every machine has its own branch (`mbp`, `imac`) that is `main` plus a few
 machine-specific commits. Shared changes go on `main`, machine-specific ones on
-the machine branch, and `conf sync` puts the machine branch back on top of
-`main`. The full workflow, including how to commit to `main` without checking
-it out in `$HOME`, is in [`.config/AGENTS.md`](../.config/AGENTS.md). What the
+the machine branch. `conf sync` rebases this machine's branch onto `main`,
+pushes it, and runs `conf setup` (`dotfiles-setup`); both are idempotent, so
+run them whenever. A tool that every machine needs goes in the Brewfile, and
+the next `conf sync` installs it everywhere.
+
+The full workflow, including how to commit to `main` without checking it out
+in `$HOME`, is in [`.config/AGENTS.md`](../.config/AGENTS.md). What the
 individual tools do and how to rebuild them is in
 [`.config/README.md`](../.config/README.md).
 
@@ -141,22 +140,25 @@ individual tools do and how to rebuild them is in
 
 ```
 $HOME
-├── .claude/skills/   # Claude Code skills (SKILL.md + scripts); the rest of .claude is ignored
-├── .config/          # Most config should go here
-│      ├── AGENTS.md  # How the repo works: branches, conf, what to commit where
-│      ├── Brewfile   # What every machine needs; installed by dotfiles-setup
-│      ├── README.md  # What the tools do
-│      ├── fish
-│      ├── fonts
+├── .claude/skills/       # Claude Code skills (SKILL.md + scripts); the rest of .claude is ignored
+├── .config/              # Most config goes here
+│      ├── AGENTS.md      # How the repo works: branches, conf, what to commit where
+│      ├── Brewfile       # What every machine needs; installed by dotfiles-setup
+│      ├── README.md      # What the tools do
+│      ├── aerospace/
+│      ├── bin/ src/      # Starship conversation counter (Rust, Python fallback), vtt2text
+│      ├── fish/
+│      ├── fonts/         # LLM Logos font and its build script
+│      ├── gh/ git/       # gh config, global gitignore
+│      ├── pgcli/ litecli/
 │      ├── starship.toml
-│      ├── television
-│      ├── tmux
-│      └── zed
-├── .dotfiles/        # Bare repo - you shouldn't change anything here
-├── .gitconfig
-├── .github           # Dotfiles README (the one you're currently reading)
-│      └── README.md
-└── .local/bin/       # dotfiles-sync and dotfiles-setup
+│      ├── television/
+│      ├── tmux/
+│      └── zed/
+├── .dotfiles/            # Bare repo - you shouldn't change anything here
+├── .gitconfig .gitignore .editorconfig .vimrc
+├── .github/README.md     # This file
+└── .local/bin/           # dotfiles-sync, dotfiles-setup, repo-status, tmux-picker, ...
 ```
 
 ## Fonts
@@ -173,8 +175,11 @@ terminal, pick a patched font such as
 
 ### Troubleshooting
 
-- Is something wrong with the fonts? Try `echo \ue0b0 \u00b1 \ue0a0 \u27a6
-\u2718 \u26a1 \u2699`. Every character should render as a distinct glyph, not a box.
+- Is something wrong with the fonts? Every character should render as a
+  distinct glyph, not a box:
+  ```fish
+  echo \ue0b0 \u00b1 \ue0a0 \u27a6 \u2718 \u26a1 \u2699
+  ```
 - `dotfiles-setup` changes the login shell when it runs in a terminal. To do
   it by hand: `echo /opt/homebrew/bin/fish | sudo tee -a /etc/shells`, then
   `chsh -s /opt/homebrew/bin/fish`.
@@ -188,10 +193,3 @@ terminal, pick a patched font such as
   machine where fisher has no record of the plugins (whose files are tracked
   here) does that. Run `conf setup` instead: it restores `fish_plugins` and
   registers the plugins with fisher before updating them.
-
-- For Celery (GDAL really) to work make sure `DYLD_LIBRARY_PATH` is set:
-  ```
-  ~/Desktop via  v19.3.0 on ☁️  (eu-central-1)
-  ❯ echo $DYLD_LIBRARY_PATH
-  /opt/homebrew/lib/
-  ```
