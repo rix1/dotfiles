@@ -1,0 +1,58 @@
+[metadata]
+name = "worktrees"
+requirements = ["git", "fd"]
+description = """
+Every linked git worktree on this machine, from any directory.
+
+`treehouse status` only covers the repository you are standing in. This lists
+the worktrees of every repository under ~/Development (or $REPO_STATUS_ROOT),
+wherever a tool put them. Columns: repository, where it lives (treehouse,
+claude, baton, codex, other), branch, path. The preview shows the pool's lease
+state for treehouse slots, then the worktree's status and recent commits.
+"""
+
+[source]
+command = '''
+fd -H -I -t d -g .git "${REPO_STATUS_ROOT:-$HOME/Development}" --prune -d 7 -E node_modules -E .treehouse 2>/dev/null | sort | while IFS= read -r g; do
+  g=${g%/}; [ -d "$g/worktrees" ] || continue
+  repo=${g%/.git}
+  git -C "$repo" worktree list --porcelain 2>/dev/null | awk -v repo="${repo##*/}" -v home="$HOME" '
+    function flush() {
+      if (n > 1) {
+        where = "other"
+        if (p ~ /\/\.treehouse\//) where = "treehouse"
+        else if (p ~ /\/\.claude\/worktrees\//) where = "claude"
+        else if (p ~ /\/\.baton\//) where = "baton"
+        else if (p ~ /\/\.codex\//) where = "codex"
+        if (index(p, home "/") == 1) p = "~" substr(p, length(home) + 1)
+        printf "%-14s %-10s %-34s %s\n", repo, where, b, p
+      }
+    }
+    /^worktree / { flush(); n++; p = substr($0, 10); b = "(detached)" }
+    /^branch /   { b = substr($0, 19) }
+    END          { flush() }'
+done
+'''
+shell = "bash"
+no_sort = true
+frecency = false
+
+[preview]
+command = '''
+p='{split: :-1}'; p="${p/#\~/$HOME}"
+cd "$p" || exit
+case $p in "$HOME"/.treehouse/*) TREEHOUSE_NO_UPDATE_CHECK=1 treehouse status 2>/dev/null </dev/null; echo ;; esac
+git -c color.status=always status -sb
+echo
+git log --oneline -15 --color=always
+'''
+shell = "bash"
+
+[keybindings]
+enter = "actions:cd"
+
+[actions.cd]
+description = "Open a new shell in the selected worktree"
+command = '''p='{split: :-1}'; cd "${p/#\~/$HOME}" && $SHELL'''
+shell = "bash"
+mode = "execute"
