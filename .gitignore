@@ -66,7 +66,10 @@ scripts/k8s-shell-custom.sh
 # fish runtime state — tracked only on machine branches, never on main
 .config/fish/fish_variables
 .config/pgcli/
-.config/1Password/
+.config/1Password/*
+!.config/1Password/ssh/
+.config/1Password/ssh/*
+!.config/1Password/ssh/agent.toml
 .config/raycast/
 .config/zed/conversations/
 # Zed rewrites these constantly and they differ per machine

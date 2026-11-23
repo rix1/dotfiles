@@ -1,0 +1,6 @@
+# Keys the 1Password SSH agent offers (https://developer.1password.com/docs/ssh/agent/config).
+# Only the Macs key: the iPhone key is in the vault too, but it belongs to the
+# phone, and without this file the Macs offer it to each other first.
+[[ssh-keys]]
+item = "SSH – Macs"
+vault = "Private"

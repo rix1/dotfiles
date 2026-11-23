@@ -1,0 +1,4 @@
+# Public keys every Mac trusts. dotfiles-setup adds any that are missing to
+# ~/.ssh/authorized_keys; it never removes lines.
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGypulYu7DVsMIZBSVxQ3SlNui04Sgi6BTicnI5XAjxB macs
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHENk3Y4Jwir5XT3Zxj0jUjeezowQGQ3rbrjYuvBLtME iphone

@@ -30,6 +30,7 @@ brew "yt-dlp"
 brew "jq"            # imac-ports reads rex JSON
 brew "displayplacer" # lowres
 
+cask "1password"   # SSH agent for every ssh connection (dotfiles-setup, ssh step)
 cask "ghostty"
 cask "aerospace"
 cask "zed"

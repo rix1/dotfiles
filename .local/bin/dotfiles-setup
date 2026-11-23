@@ -17,6 +17,8 @@
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
+#   ssh         ~/.ssh/config uses the 1Password agent, ~/.config/ssh/authorized_keys trusted;
+#               checks (does not change) the agent toggle, Remote Login and Tailscale
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop) and the claude-agent-view
 #               SubagentStart hook registered in ~/.claude/settings.json
 #               and tui set to default, so transcripts stay in the terminal scrollback
@@ -182,6 +184,56 @@ if [[ -x $BIN && ! -L $BIN && $BIN -nt $SRC ]]; then ok "binary newer than sourc
 elif command -v rustc >/dev/null; then act "build with rustc -O"; run rustc -O "$SRC" -o "$BIN" 2>/dev/null
 elif [[ -x $BIN ]]; then skip "no rustc; keeping the existing $(basename "$(readlink "$BIN" || echo binary)")"
 else act "no rustc: link the Python fallback"; run ln -sf llm-conversation-count.py "$BIN"; fi
+
+# ---------------------------------------------------------------- ssh
+# One key, "SSH – Macs", lives only in 1Password and every Mac trusts it.
+# ~/.config/1Password/ssh/agent.toml (tracked) makes the agent offer only that
+# key. The three switches below have no reliable CLI, so this step only checks
+# them and says what to click.
+hdr "ssh"
+OPSOCK="$H/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+SSHC=$H/.ssh/config
+AK=$H/.ssh/authorized_keys
+AK_SRC=$CFG/ssh/authorized_keys
+if [[ -S $OPSOCK ]]; then ok "1Password SSH agent running"
+else skip "1Password SSH agent is off: 1Password → Settings → Developer → Use the SSH agent"; fi
+
+if [[ -f $SSHC ]] && grep -qF '2BUA8C4S2C.com.1password/t/agent.sock' "$SSHC"; then
+  ok "~/.ssh/config uses the 1Password agent"
+else
+  act "add Host * IdentityAgent (1Password) to ~/.ssh/config"
+  if ! (( DRY )); then
+    mkdir -p "$H/.ssh" && chmod 700 "$H/.ssh"
+    printf '\n# 1Password SSH agent for every host (added by dotfiles-setup)\nHost *\n  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"\n' >> "$SSHC"
+  fi
+fi
+
+if [[ -f $AK_SRC ]]; then
+  while read -r type key name; do
+    [[ -z $type || $type == \#* ]] && continue
+    if [[ -f $AK ]] && grep -qF "$key" "$AK"; then ok "authorized_keys trusts $name"
+    else
+      act "trust $name in ~/.ssh/authorized_keys"
+      if ! (( DRY )); then
+        mkdir -p "$H/.ssh" && chmod 700 "$H/.ssh"
+        echo "$type $key $name" >> "$AK" && chmod 600 "$AK"
+      fi
+    fi
+  done < "$AK_SRC"
+fi
+
+if nc -z -G 2 127.0.0.1 22 >/dev/null 2>&1; then ok "Remote Login on"
+else
+  skip "Remote Login is off: System Settings → General → Sharing → Remote Login"
+  [[ -t 0 ]] && ! (( DRY )) && open "x-apple.systempreferences:com.apple.Sharing-Settings.extension"
+fi
+
+# The App Store build of Tailscale has no CLI on PATH.
+TS=$(command -v tailscale || true)
+[[ -z $TS && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]] && TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+if [[ -z $TS ]]; then skip "Tailscale not installed (tailscale.com/download, or the App Store)"
+elif "$TS" status >/dev/null 2>&1; then ok "Tailscale connected"
+else skip "Tailscale is installed but not connected: open it and log in"; fi
 
 # ---------------------------------------------------------------- claude code hooks
 hdr "claude code hooks"
