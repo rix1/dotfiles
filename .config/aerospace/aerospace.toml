@@ -64,6 +64,8 @@ on-window-detected = [
     { if = 'test %{app-bundle-id} = com.apple.finder', run = 'layout floating' },
     { if = 'test %{app-bundle-id} = company.thebrowser.dia', run = 'layout floating' },
     { if = 'test %{app-bundle-id} = com.sindresorhus.Dato', run = 'layout floating' },
+    # Search browser: the Arc-style mini window has an empty title; main windows tile
+    { if = "test %{app-bundle-id} = com.officecommun.search && test %{window-title} ~= '^$'", run = 'layout floating' },
 
     # Automatic workspace assignment
     { if = 'test %{app-bundle-id} = dev.zed.Zed', run = 'move-node-to-workspace 2' },
