@@ -21,6 +21,8 @@
 #               checks (does not change) the agent toggle, Remote Login and Tailscale
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop), the claude-statusline status line, the claude-agent-view
 #               SubagentStart hook registered in ~/.claude/settings.json
+#               the claude-worktree hooks (WorktreeCreate, WorktreeRemove, SessionEnd) where treehouse is
+#               installed, so Claude Code's worktrees come from the treehouse pool
 #               and tui set to default, so transcripts stay in the terminal scrollback
 #   signing     commit.gpgsign=false in the Claude Code and Codex shell environments (agents can't sign)
 
@@ -277,6 +279,30 @@ else
         '.hooks //= {} | .hooks.SubagentStart //= [] | .hooks.SubagentStart += [{hooks: [{type: "command", command: $cmd, async: true, timeout: 15}]}]' \
         "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
     fi
+  fi
+  # Worktrees come from the treehouse pool instead of <repo>/.claude/worktrees.
+  # Only where treehouse is installed: WorktreeCreate replaces Claude Code's own
+  # `git worktree add`, so without treehouse it would leave no way to make one.
+  if [[ ! -x $H/.local/bin/claude-worktree ]]; then skip "no ~/.local/bin/claude-worktree"
+  elif ! command -v treehouse >/dev/null && [[ ! -x $H/.local/bin/treehouse ]]; then
+    skip "treehouse not installed: Claude Code keeps its worktrees in .claude/worktrees"
+  else
+    for spec in WorktreeCreate:create:300 WorktreeRemove:remove:120 SessionEnd:sweep:60; do
+      IFS=: read -r ev sub secs <<<"$spec"
+      cmd="exec \"\$HOME/.local/bin/claude-worktree\" $sub"
+      if jq -e --arg ev "$ev" \
+           '[.hooks[$ev][]?.hooks[]?.command // "" | select(contains("claude-worktree"))] | length > 0' \
+           "$SETTINGS" >/dev/null 2>&1; then
+        ok "$ev hook registered"
+      else
+        act "register $ev hook in ~/.claude/settings.json"
+        if ! (( DRY )); then
+          tmp=$(mktemp) && jq --arg ev "$ev" --arg cmd "$cmd" --argjson secs "$secs" \
+            '.hooks //= {} | .hooks[$ev] //= [] | .hooks[$ev] += [{hooks: [{type: "command", command: $cmd, timeout: $secs}]}]' \
+            "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+        fi
+      fi
+    done
   fi
   # Status line: model · effort · working directory. Leaves any other
   # statusLine alone.

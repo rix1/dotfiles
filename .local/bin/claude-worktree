@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# claude-worktree — Claude Code worktree hooks backed by treehouse.
+#
+# Claude Code puts its worktrees in <repo>/.claude/worktrees/. These hooks hand
+# it a slot from the treehouse pool (~/.treehouse/<repo>-<hash>/<slot>/<repo>)
+# instead, so `treehouse status` and the `worktrees` television channel see every one of them.
+#
+#   claude-worktree create   WorktreeCreate: lease a slot on branch worktree-<name>, print its path
+#   claude-worktree remove   WorktreeRemove: return the slot to the pool
+#   claude-worktree sweep    SessionEnd: return this session's slots that hold nothing
+#
+# Each reads the hook's JSON on stdin. Registered in ~/.claude/settings.json by
+# dotfiles-setup. `create` replaces Claude Code's own `git worktree add`, so it
+# covers `claude --worktree`, the EnterWorktree tool and isolated subagents.
+#
+# Claude Code never calls `remove` for a subagent's worktree, which would leave
+# one leased slot behind per subagent. `create` therefore notes every slot a
+# session leases, and `sweep` returns the ones that are clean and have no
+# commits of their own when the session ends. Anything with work in it stays
+# leased until `treehouse return <path>`.
+
+set -uo pipefail
+
+export TREEHOUSE_NO_UPDATE_CHECK=1
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/claude-worktree
+
+die() { printf 'claude-worktree: %s\n' "$*" >&2; exit 1; }
+
+TREEHOUSE=$(command -v treehouse || true)
+[[ -n $TREEHOUSE ]] || TREEHOUSE=$HOME/.local/bin/treehouse
+[[ -x $TREEHOUSE ]] || die "treehouse is not installed; install it, or remove the Worktree* hooks from ~/.claude/settings.json"
+command -v jq >/dev/null || die "jq is not installed"
+
+th() { "$TREEHOUSE" "$@" </dev/null; }
+
+input=$(cat)
+field() { jq -r --arg k "$1" '.[$k] // empty' <<<"$input"; }
+
+# Lease holder shown by `treehouse status`: claude:<worktree name>@<session>.
+holder() { printf 'claude:%s@%s' "$1" "${2:0:8}"; }
+
+# The pool's record of one slot, by path. Empty when the path is not a slot.
+# Asked from the main checkout: treehouse counts a process standing in a slot as using it.
+slot() {
+  local repo; repo=$(main_repo "$1" 2>/dev/null) || return 0
+  (cd "$repo" 2>/dev/null && th status --json 2>/dev/null | jq -c --arg p "$1" '.[] | select(.path == $p)')
+}
+
+# Commits on HEAD that no remote and no other local branch has.
+unique_commits() {
+  local path=$1 branch
+  branch=$(git -C "$path" symbolic-ref -q --short HEAD || true)
+  git -C "$path" rev-list --count HEAD --not --remotes ${branch:+--exclude="$branch"} --branches 2>/dev/null
+}
+
+# Drop a worktree-* branch this script created, once nothing has it checked out.
+drop_branch() {
+  local repo=$1 branch=$2
+  [[ $branch == worktree-* ]] || return 0
+  git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
+}
+
+main_repo() { dirname "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)"; }
+
+case ${1:-} in
+  create)
+    name=$(field name); cwd=$(field cwd); sid=$(field session_id)
+    [[ -n $name ]] || die "no worktree name in the hook input"
+    cd "${cwd:-.}" || die "cannot enter $cwd"
+    branch=worktree-$name
+    who=$(holder "$name" "$sid")
+
+    # A worktree that already has the branch checked out is this name's worktree: reuse it.
+    existing=$(git worktree list --porcelain 2>/dev/null |
+      awk -v b="branch refs/heads/$branch" '/^worktree /{p=substr($0,10)} $0==b{print p; exit}')
+    if [[ -n $existing ]]; then
+      s=$(slot "$existing")
+      [[ -n $s ]] || die "branch $branch is checked out at $existing, which is not a treehouse slot; remove that worktree or pick another name"
+      if [[ $(jq -r .status <<<"$s") == available ]]; then
+        th lease "$(jq -r .name <<<"$s")" --lease-holder "$who" >/dev/null || die "could not lease $existing"
+      fi
+      path=$existing
+    elif git show-ref --verify --quiet "refs/heads/$branch"; then
+      path=$(th get --lease --lease-holder "$who") || die "treehouse could not lease a worktree"
+      git -C "$path" switch --quiet "$branch" >&2 || { th return "$path" >&2; die "could not switch to $branch"; }
+    else
+      path=$(th get --lease --lease-holder "$who" -b "$branch") || die "treehouse could not lease a worktree"
+    fi
+
+    [[ -d $path ]] || die "treehouse returned no worktree"
+    if [[ -n $sid ]]; then mkdir -p "$STATE" && printf '%s\n' "$path" >> "$STATE/$sid"; fi
+    printf '%s\n' "$path"
+    ;;
+
+  remove)
+    path=$(field worktree_path)
+    [[ -n $path && -d $path ]] || exit 0
+    if [[ -z $(slot "$path") ]]; then
+      # Made by git before these hooks existed: remove it the way Claude Code would have.
+      git -C "$(main_repo "$path")" worktree remove --force "$path" >&2 || die "could not remove $path"
+      exit 0
+    fi
+    repo=$(main_repo "$path")
+    branch=$(git -C "$path" symbolic-ref -q --short HEAD || true)
+    unique=$(unique_commits "$path")
+    # Claude Code asks before it removes a worktree with changes, so discard them like its own removal does.
+    th return --force "$path" >&2 || die "treehouse could not return $path"
+    [[ $unique == 0 ]] && drop_branch "$repo" "$branch"
+    exit 0
+    ;;
+
+  sweep)
+    sid=$(field session_id)
+    [[ -n $sid && -f $STATE/$sid ]] || exit 0
+    # /clear and resume end the session id but not the work; leave its slots alone.
+    case $(field reason) in clear|resume) exit 0 ;; esac
+    while IFS= read -r path; do
+      [[ -d $path ]] || continue
+      s=$(slot "$path"); [[ -n $s ]] || continue
+      who=$(jq -r .lease_holder <<<"$s")
+      [[ $(jq -r .status <<<"$s") == leased && $who == claude:*@"${sid:0:8}" ]] || continue
+      [[ $(jq -r '.processes | length' <<<"$s") == 0 ]] || continue
+      [[ -z $(git -C "$path" status --porcelain 2>/dev/null) ]] || continue
+      [[ $(unique_commits "$path") == 0 ]] || continue
+      repo=$(main_repo "$path")
+      branch=$(git -C "$path" symbolic-ref -q --short HEAD || true)
+      th return "$path" --if-lease-holder "$who" >/dev/null 2>&1 && drop_branch "$repo" "$branch"
+    done < <(sort -u "$STATE/$sid")
+    rm -f "$STATE/$sid"
+    exit 0
+    ;;
+
+  *) die "usage: claude-worktree create|remove|sweep  (hook JSON on stdin)" ;;
+esac
