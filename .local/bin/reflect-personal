@@ -17,28 +17,46 @@
 #   reflect-personal publish           push, then upload the build as a GitHub prerelease
 #   reflect-personal install --latest  download the newest published build and install it
 #   reflect-personal all               rebuild, build, install
+#   reflect-personal path              print the worktree `personal` is checked out in
+#
+# `personal` lives in a worktree of the repo, and the script finds it by the
+# branch, wherever it is. When there is none it leases a treehouse slot
+# (~/.treehouse/reflect-open-*/, held by "reflect-personal"), or without
+# treehouse creates ~/Development/reflect-personal.
 #
 # Branches:  git -C ~/Development/reflect-open config --add personal.branch feat/x
 #            git -C ~/Development/reflect-open config --get-all personal.branch
 set -euo pipefail
 
 REPO="${REFLECT_REPO:-$HOME/Development/reflect-open}"
-WORKTREE="${REFLECT_PERSONAL_WORKTREE:-$HOME/Development/reflect-personal}"
 BRANCH=personal
 UPSTREAM=origin/master
 FORK_REMOTE="${REFLECT_FORK_REMOTE:-fork}"
 FORK_REPO="${REFLECT_FORK_REPO:-rix1/reflect-open}"
 APP="Reflect Dev.app"
-BUNDLE="$WORKTREE/target/release/bundle/macos/$APP"
-# The commit the bundle was built from, written next to it (not inside, which
-# would break the signature) so `publish` can refuse a stale build.
-BUILT_FROM="$WORKTREE/target/release/bundle/macos/.built-from"
 ZIP_NAME=Reflect-Dev.zip
 # Published builds kept on GitHub; older personal-* releases are deleted.
 KEEP_RELEASES="${REFLECT_KEEP_RELEASES:-5}"
 # Every branch appends its item to the end of this list, so the branches
 # conflict there pairwise, and anew whenever upstream or a branch touches it.
 WHATS_NEW=packages/app/src/whats-new/whats-new-content.ts
+
+# The linked worktree that has `personal` checked out, or nothing. The main
+# checkout does not count: it has to stay on master.
+find_worktree() {
+  git -C "$REPO" worktree list --porcelain 2>/dev/null |
+    awk -v b="branch refs/heads/$BRANCH" -v repo="$REPO" \
+      '/^worktree /{p=substr($0,10)} $0==b && p!=repo {print p; exit}' || true
+}
+
+set_paths() {
+  WORKTREE="${REFLECT_PERSONAL_WORKTREE:-$(find_worktree)}"
+  BUNDLE="$WORKTREE/target/release/bundle/macos/$APP"
+  # The commit the bundle was built from, written next to it (not inside, which
+  # would break the signature) so `publish` can refuse a stale build.
+  BUILT_FROM="$WORKTREE/target/release/bundle/macos/.built-from"
+}
+set_paths
 
 say() { printf '\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf 'reflect-personal: %s\n' "$*" >&2; exit 1; }
@@ -98,11 +116,23 @@ PY
 }
 
 ensure_worktree() {
-  if [ ! -d "$WORKTREE" ]; then
+  if [ -n "$WORKTREE" ] && [ -d "$WORKTREE" ]; then return; fi
+  local hint="is \`$BRANCH\` checked out in $REPO? switch that checkout to master"
+  if [ -z "${REFLECT_PERSONAL_WORKTREE:-}" ] && command -v treehouse >/dev/null; then
+    say "leasing a treehouse slot for $BRANCH"
+    WORKTREE="$(cd "$REPO" && TREEHOUSE_NO_UPDATE_CHECK=1 treehouse get --lease --lease-holder reflect-personal </dev/null)" ||
+      die "treehouse could not lease a worktree"
+    # An existing `personal` is kept as it is; `rebuild` is what resets it.
+    git -C "$WORKTREE" checkout --quiet "$BRANCH" 2>/dev/null ||
+      git -C "$WORKTREE" checkout --quiet -b "$BRANCH" "$UPSTREAM" ||
+      die "could not check out $BRANCH in $WORKTREE ($hint)"
+  else
+    WORKTREE="${REFLECT_PERSONAL_WORKTREE:-$HOME/Development/reflect-personal}"
     say "creating worktree $WORKTREE"
     git -C "$REPO" worktree add -B "$BRANCH" "$WORKTREE" "$UPSTREAM" ||
-      die "could not create $WORKTREE (is \`$BRANCH\` checked out in $REPO? switch that checkout to master)"
+      die "could not create $WORKTREE ($hint)"
   fi
+  set_paths
 }
 
 cmd_status() {
@@ -217,7 +247,7 @@ cmd_install() {
   case "${1:-}" in
     --latest) install_latest ;;
     "")
-      [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+      [ -n "$WORKTREE" ] && [ -d "$BUNDLE" ] || die "no build of $BRANCH here; run: reflect-personal build"
       install_app "$BUNDLE"
       ;;
     *) die "unknown install option: $1" ;;
@@ -274,7 +304,7 @@ release_notes() {
 
 cmd_publish() {
   command -v gh >/dev/null || die "gh not found; brew install gh, then gh auth login"
-  [ -d "$BUNDLE" ] || die "no build at $BUNDLE; run: reflect-personal build"
+  [ -n "$WORKTREE" ] && [ -d "$BUNDLE" ] || die "no build of $BRANCH here; run: reflect-personal build"
   local sha short tag old
   sha="$(git -C "$WORKTREE" rev-parse HEAD)"
   short="$(git -C "$WORKTREE" rev-parse --short HEAD)"
@@ -315,5 +345,7 @@ case "${1:-}" in
   # Separate statements, not `a && b`: bash ignores `set -e` inside a function
   # that runs as part of an && list, so a failed step would not stop the rest.
   all) cmd_rebuild; cmd_build; cmd_install ;;
-  *) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  path) [ -n "$WORKTREE" ] && [ -d "$WORKTREE" ] || die "$BRANCH is not checked out in any worktree; run: reflect-personal rebuild"
+        echo "$WORKTREE" ;;
+  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

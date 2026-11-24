@@ -14,10 +14,10 @@ not upstream merges them; upstream PRs are opened only when the user asks.
 | Thing | Where |
 | --- | --- |
 | Main checkout | `~/Development/reflect-open` (`origin` = team-reflect, `fork` = rix1/reflect-open, public) |
-| Integration branch | `personal`, in worktree `~/Development/reflect-personal`. Generated, never edited by hand |
+| Integration branch | `personal`, in its own worktree: a leased treehouse slot (`reflect-personal path` prints it; `~/Development/reflect-personal` where it predates that or treehouse is missing). Generated, never edited by hand |
 | Branch list | `git -C ~/Development/reflect-open config --get-all personal.branch` (merge order) |
-| Script | `reflect-personal status \| rebuild \| build \| install [--latest] \| push \| publish \| all` (`~/.local/bin`, in dotfiles) |
-| Built app | `~/Development/reflect-personal/target/release/bundle/macos/Reflect Dev.app` |
+| Script | `reflect-personal status \| rebuild \| build \| install [--latest] \| push \| publish \| all \| path` (`~/.local/bin`, in dotfiles) |
+| Built app | `target/release/bundle/macos/Reflect Dev.app` in that worktree |
 | Published builds | prereleases `personal-<shortsha>` on rix1/reflect-open, asset `Reflect-Dev.zip` |
 | Machines | The MacBook alone rebases, rebuilds, builds and publishes. Other machines (the iMac) only run `reflect-personal install --latest` |
 
@@ -108,7 +108,7 @@ file is a future conflict, so:
   branch appends there, so branches conflict pairwise in `personal`;
   `reflect-personal rebuild` resolves that file by keeping both sides.
 - Then `reflect-personal all`. If `rebuild` stops on a conflict, resolve it in
-  `~/Development/reflect-personal`, `git add`, `git commit --no-verify`, and
+  the worktree (`reflect-personal path`), `git add`, `git commit --no-verify`, and
   run `rebuild` again (rerere records it).
 
 ## Keeping current
