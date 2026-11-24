@@ -1,7 +1,8 @@
 function lowres --description 'Drop the main display to a low non-Retina mode for remote Screen Sharing'
-    # lowres [WxH]   switch to WxH without Retina scaling (default 1920x1080), saving the current mode
-    # lowres off     restore the saved mode
-    # lowres status  show the current mode and whether one is saved
+    # lowres on [WxH]  switch to WxH without Retina scaling (default 1280x720), saving the current mode
+    # lowres mid       same as `lowres on 1920x1080`: roomier, about twice the upload
+    # lowres off       restore the saved mode
+    # lowres [status]  show the current mode and whether one is saved
     #
     # Fewer pixels means less to upload, which matters on a slow uplink. The
     # restore command is built here rather than taken from `displayplacer list`,
@@ -17,7 +18,7 @@ function lowres --description 'Drop the main display to a low non-Retina mode fo
 
     # displayplacer cannot change the mode of a sleeping panel (it reports it as
     # disabled), so declare user activity first; this wakes the display.
-    if contains -- "$argv[1]" '' on off restore; or string match -qr '^\d+x\d+$' -- "$argv[1]"
+    if contains -- "$argv[1]" on mid off
         caffeinate -u -t 5 &
         disown
         sleep 1
@@ -39,7 +40,7 @@ function lowres --description 'Drop the main display to a low non-Retina mode fo
     set -l id $cur[1]
 
     switch "$argv[1]"
-        case status
+        case '' status
             echo "main display: $cur[2] @ $cur[3]Hz, scaling $cur[5]"
             if test -f $saved
                 echo "saved mode:   "(cat $saved)
@@ -47,7 +48,7 @@ function lowres --description 'Drop the main display to a low non-Retina mode fo
                 echo "saved mode:   none"
             end
 
-        case off restore
+        case off
             if not test -f $saved
                 echo "lowres: no saved mode; nothing to restore" >&2
                 return 1
@@ -56,14 +57,21 @@ function lowres --description 'Drop the main display to a low non-Retina mode fo
             rm $saved
             echo "restored: "(displayplacer list | awk '/^Resolution:/ { print $2; exit }')
 
-        case '' on '*x*'
-            set -l res 1920x1080
-            string match -qr '^\d+x\d+$' -- "$argv[1]"; and set res $argv[1]
+        case on mid
+            set -l res 1280x720
+            test "$argv[1]" = mid; and set res 1920x1080
+            if test "$argv[1]" = on; and set -q argv[2]
+                if not string match -qr '^\d+x\d+$' -- $argv[2]
+                    echo "lowres: size must look like 1600x900, not '$argv[2]'" >&2
+                    return 1
+                end
+                set res $argv[2]
+            end
             set -l scaling
             test "$cur[5]" = on; and set scaling scaling:on
             set -l original "id:$id res:$cur[2] hz:$cur[3] color_depth:$cur[4] $scaling origin:(0,0) degree:0"
             displayplacer "id:$id res:$res hz:$cur[3] color_depth:$cur[4] origin:(0,0) degree:0"; or return
-            # Save only the first time, so a second `lowres` cannot overwrite
+            # Save only the first time, so a second `lowres on` cannot overwrite
             # the real mode with the low one.
             if not test -f $saved
                 mkdir -p $state_dir
@@ -72,7 +80,7 @@ function lowres --description 'Drop the main display to a low non-Retina mode fo
             echo "main display now $res (no Retina scaling); `lowres off` restores "(string match -r 'res:\S+' <$saved)
 
         case '*'
-            echo "usage: lowres [WxH | off | status]" >&2
+            echo "usage: lowres on [WxH] | mid | off | status" >&2
             return 1
     end
 end
