@@ -3,9 +3,9 @@
 #
 #   claude-agent-view FILE.jsonl   follow a subagent transcript in this terminal
 #   claude-agent-view --hook       SubagentStart hook: follow the new subagent in a
-#                                  background Rex tab, one tab per Claude session
-#                                  with a split per subagent (reads hook JSON on
-#                                  stdin; does nothing outside Rex)
+#                                  minimized floating pane in the Rex window Claude
+#                                  runs in (reads hook JSON on stdin; does nothing
+#                                  outside Rex)
 set -eu
 
 follow() {
@@ -47,42 +47,24 @@ hook() {
 	done
 	[ -n "$name" ] || name="$agent_type"
 
-	# Subagents started together fire their hooks at once; only one may create the tab.
-	mkdir -p "$dir"
-	lock="$dir/.rex-lock"
-	tries=0
-	while ! mkdir "$lock" 2>/dev/null; do
-		tries=$((tries + 1))
-		[ $tries -lt 100 ] || break
-		sleep 0.1
-	done
-	trap 'rmdir "$lock" 2>/dev/null || true' EXIT
-
-	state="$dir/.rex-window"
-	window=""
-	[ -f "$state" ] && window=$(cat "$state")
-	if [ -n "$window" ] && layout=$(rex window inspect "$window" -s "$REX_SESSION" --json 2>/dev/null); then
-		# Split the largest pane, side by side while it is wide and stacked once it is
-		# not, so the tab fills as a grid instead of ever-thinner columns.
-		set -- $(printf '%s' "$layout" | jq -r '
-		  [.layers[] | select(.kind == "tiled") | .layout | .. | objects
-		   | select(has("block_id") and has("rect"))
-		   | {id: .block_id, w: .rect[2], h: .rect[3]}]
-		  | max_by(.w * .h)
-		  | "\(.id) \(if .w * 1.8 > .h * 1.6 then "right" else "below" end)"')
-		rex split -s "$REX_SESSION" -w "$window" -b "$1" --split="$2" --focus=false --keep-open \
-			--label "$name" -- "$0" "$transcript" >/dev/null
-	else
-		session=$(basename "${parent%.jsonl}")
-		created=$(rex window new -s "$REX_SESSION" "agenter ${session%%-*}" --focus=false --keep-open --json \
-			-- "$0" "$transcript")
-		printf '%s' "$created" | jq -r '.window_id' >"$state"
-		rex block rename "$(printf '%s' "$created" | jq -r '.block_ids[0]')" "$name" -s "$REX_SESSION" >/dev/null || true
-	fi
+	# One minimized floating layer per subagent, in the window Claude runs in.
+	# Layers are cascaded so restoring several does not stack them exactly.
+	window=$(rex block inspect "${REX_BLOCK:-}" -s "$REX_SESSION" --json 2>/dev/null | jq -r '.block.window_id // empty') || window=""
+	n=$(ls "$dir"/agent-*.jsonl 2>/dev/null | wc -l | tr -d ' ')
+	off=$(awk -v n="$n" 'BEGIN { if (n < 1) n = 1; printf "%.2f", ((n - 1) % 6) * 0.04 }')
+	req=$(jq -nc --arg s "$REX_SESSION" --arg w "$window" --arg name "$name" --arg self "$0" \
+		--arg t "$transcript" --argjson off "$off" '
+	  {session_id: $s, bounds: [0.45 + $off, 0.05 + $off, 0.5, 0.6], focus: false,
+	   layout: {block: {flavor: "com.superlogical.terminal.shell", label: $name,
+	     options: {command: [$self, $t], exit: {on_completion: false}}}}}
+	  + (if $w == "" then {} else {window_id: $w} end)')
+	layer=$(rex api call session.new_layer "$req" | jq -r .layer_id)
+	rex api call session.set_layer_state "$(jq -nc --arg s "$REX_SESSION" --arg l "$layer" \
+		'{session_id: $s, layer_id: $l, state: "minimized"}')" >/dev/null
 }
 
 case "${1:-}" in
 --hook) hook ;;
-"" | -h | --help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' ;;
+"" | -h | --help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//' ;;
 *) follow "$1" ;;
 esac
