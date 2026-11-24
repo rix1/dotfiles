@@ -17,6 +17,8 @@
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
+#   link router where the Search browser is installed: Link Router cloned to ~/Development and
+#               built into ~/Applications; checks (does not change) the default browser
 #   ssh         ~/.ssh/config uses the 1Password agent, ~/.config/ssh/authorized_keys trusted;
 #               checks (does not change) the agent toggle, Remote Login and Tailscale
 #   claude      dotfiles skill hooks (UserPromptSubmit, Stop), the claude-statusline status line, the claude-agent-view
@@ -31,7 +33,7 @@ set -uo pipefail
 DRY=0
 case ${1:-} in
   --dry-run) DRY=1 ;;
-  -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   "") ;;
   *) echo "dotfiles-setup: unknown option: $1" >&2; exit 2 ;;
 esac
@@ -186,6 +188,36 @@ if [[ -x $BIN && ! -L $BIN && $BIN -nt $SRC ]]; then ok "binary newer than sourc
 elif command -v rustc >/dev/null; then act "build with rustc -O"; run rustc -O "$SRC" -o "$BIN" 2>/dev/null
 elif [[ -x $BIN ]]; then skip "no rustc; keeping the existing $(basename "$(readlink "$BIN" || echo binary)")"
 else act "no rustc: link the Python fallback"; run ln -sf llm-conversation-count.py "$BIN"; fi
+
+# ---------------------------------------------------------------- link router
+# The Search browser opens links from other apps in a small window. With AeroSpace
+# that window only lands on the workspace you clicked on when the link arrives
+# through Link Router, a stand-in default browser (see its README). macOS asks
+# before it changes the default browser, so that part is only checked.
+hdr "link router"
+LR_REPO=https://github.com/rix1/link-router.git
+LR_SRC=$H/Development/link-router
+LR_APP="$H/Applications/Link Router.app"
+LR_BIN=$LR_APP/Contents/MacOS/link-router
+if [[ ! -d /Applications/Search.app && ! -d $H/Applications/Search.app ]]; then
+  skip "Search is not installed, so Link Router is not needed"
+else
+  if [[ -d $LR_SRC/.git ]]; then ok "source in ~/Development/link-router"
+  else
+    act "git clone $LR_REPO ~/Development/link-router"
+    run git clone -q "$LR_REPO" "$LR_SRC" \
+      || skip "clone failed; the repo is private, so run gh auth login first, then rerun"
+  fi
+  if [[ -x $LR_BIN && $LR_BIN -nt $LR_SRC/main.swift && $LR_BIN -nt $LR_SRC/Info.plist ]]; then
+    ok "app newer than source"
+  elif [[ -x $LR_SRC/install ]] || (( DRY )); then
+    act "build ~/Applications/Link Router.app"
+    run env HOME="$H" "$LR_SRC/install" >/dev/null || skip "build failed; run ~/Development/link-router/install to see why"
+  fi
+  if [[ ! -x $LR_BIN ]]; then :
+  elif "$LR_BIN" --is-default; then ok "Link Router is the default browser"
+  else skip "not the default browser; run: ~/Applications/Link\\ Router.app/Contents/MacOS/link-router --make-default"; fi
+fi
 
 # ---------------------------------------------------------------- ssh
 # One key, "SSH – Macs", lives only in 1Password and every Mac trusts it.

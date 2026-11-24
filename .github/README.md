@@ -98,6 +98,7 @@ these steps in order, and each one checks before it acts:
 | fonts        | copies `~/.config/fonts/*.otf` to `~/Library/Fonts`                          |
 | ghostty      | adds the `font-codepoint-map` line for the LLM logo glyphs                   |
 | starship     | builds the conversation counter with `rustc`, or links the Python fallback   |
+| link router  | where the Search browser is installed: clones Link Router to `~/Development`, builds it into `~/Applications`, says how to make it the default browser |
 | ssh          | points `~/.ssh/config` at the 1Password agent, trusts `~/.config/ssh/authorized_keys`; checks the switches in step 8 |
 | claude hooks | registers the dotfiles skill hooks in `~/.claude/settings.json`              |
 
@@ -124,6 +125,10 @@ conf sync                       # pushes a new machine branch; afterwards just r
 ```
 
 Import your GPG key before your first commit (see "What you start with").
+
+`conf sync` runs `conf setup` again. With Search installed and `gh` logged in,
+it can now clone Link Router (a private repo) and build it; it prints the one
+command that makes it the default browser.
 
 **8. SSH between the Macs.** One key, "SSH – Macs", lives in 1Password and
 every Mac trusts it. [`agent.toml`](../.config/1Password/ssh/agent.toml) makes
