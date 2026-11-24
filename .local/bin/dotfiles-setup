@@ -14,6 +14,7 @@
 #   shell       fish >= 4 in /etc/shells and set as the login shell (sudo, chsh)
 #   fisher      plugins installed as listed in ~/.config/fish/fish_plugins
 #   tmux        tpm cloned, plugins from tmux.conf installed
+#   television  the stock channels the fish key bindings open (tv update-channels, keeps existing ones)
 #   fonts       ~/.config/fonts/*.otf installed into ~/Library/Fonts
 #   ghostty     font-codepoint-map line for the LLM logo glyphs
 #   starship    llm-conversation-count built from ~/.config/src (rustc), else the Python fallback
@@ -151,6 +152,18 @@ if command -v tmux >/dev/null; then
   if (( missing )); then act "install tmux plugins listed in tmux.conf"; run "$TPM/bin/install_plugins" >/dev/null; fi
 else
   skip "tmux not installed (brew install tmux)"
+fi
+
+# ---------------------------------------------------------------- television
+hdr "television channels"
+# Only the channels written here are tracked. The stock ones that the channel
+# triggers in television/config.toml point at (files, dirs, git-branch, ...)
+# are downloaded; update-channels leaves channels that already exist alone.
+if command -v tv >/dev/null; then
+  if [[ -f $CFG/television/cable/files.toml ]]; then ok "stock channels present"
+  else act "download the stock channels (tv update-channels)"; run tv update-channels >/dev/null; fi
+else
+  skip "television not installed (brew install television)"
 fi
 
 # ---------------------------------------------------------------- fonts

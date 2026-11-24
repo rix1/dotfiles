@@ -1,0 +1,51 @@
+[metadata]
+name = "git-status"
+description = "Changed and untracked files in this repository, from git status"
+requirements = ["git"]
+
+[source]
+# git quotes paths that contain spaces; the quotes are dropped so that the
+# output is the path itself.
+command = """git -c color.status=always -c core.quotePath=false status --short | sed 's/"//g'"""
+ansi = true
+# Drop the two status columns; for a rename (`old -> new`) keep the new path.
+output = "{strip_ansi|substring:3..|split: -> :-1}"
+no_sort = true
+frecency = false
+
+[preview]
+command = '''
+f='{strip_ansi|substring:3..|split: -> :-1}'
+if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+  git diff HEAD --color=always -- "$f"
+elif [ -d "$f" ]; then
+  ls -la "$f"
+else
+  bat -n --color=always -- "$f" 2>/dev/null || cat -- "$f"
+fi
+'''
+shell = "bash"
+
+[ui]
+layout = "portrait"
+
+[keybindings]
+ctrl-s = "actions:stage"
+ctrl-u = "actions:unstage"
+ctrl-e = "actions:edit"
+
+[actions.stage]
+description = "Stage the selected file"
+command = "git add -- '{strip_ansi|substring:3..|split: -> :-1}'"
+mode = "fork"
+
+[actions.unstage]
+description = "Unstage the selected file"
+command = "git restore --staged -- '{strip_ansi|substring:3..|split: -> :-1}'"
+mode = "fork"
+
+[actions.edit]
+description = "Open the selected file in the editor"
+command = "${EDITOR:-vim} '{strip_ansi|substring:3..|split: -> :-1}'"
+shell = "bash"
+mode = "execute"

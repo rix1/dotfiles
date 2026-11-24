@@ -206,49 +206,72 @@ fallback_channel = "files"
 # "dirs" = ["ls"]
 # "files" = ["cat", "cp"]
 # ```
+# Tuned to what shows up in the fish history. The longest matching command
+# wins, so `git stash` beats `git`.
 "alias" = ["alias", "unalias"]
-"env" = ["export", "unset"]
-"dirs" = ["cd", "ls", "rmdir", "z"]
+"env" = ["export", "unset", "set -e", "echo $"]
+"dirs" = ["cd", "ls", "ll", "eza", "tree", "mkdir", "rmdir"]
 "files" = [
   "cat",
+  "bat",
   "less",
   "head",
   "tail",
+  "vi",
   "vim",
-  "nano",
-  "bat",
+  "zed",
+  "open",
+  "delta",
+  "source",
   "cp",
   "mv",
   "rm",
+  "scp",
   "touch",
   "chmod",
-  "chown",
   "ln",
   "tar",
-  "zip",
   "unzip",
-  "gzip",
-  "gunzip",
-  "xz",
+  "magick",
+  "ffmpeg -i",
+  "compress_video",
+  "csv2sqlite",
+  "djlint",
+  "pytest",
 ]
-"git-diff" = ["git add", "git restore"]
+"git-status" = ["git add", "git restore", "git diff", "git stash push"]
 "git-branch" = [
   "git checkout",
+  "git switch",
   "git branch",
   "git merge",
   "git rebase",
   "git pull",
   "git push",
+  "git worktree add",
 ]
-"git-log" = ["git log", "git show"]
+"git-commits" = [
+  "git log",
+  "git show",
+  "git cherry-pick",
+  "git revert",
+  "git reset",
+  "git commit --fixup",
+]
+"git-stash" = ["git stash pop", "git stash apply", "git stash drop", "git stash show"]
+"git-worktrees" = ["git worktree remove"]
+"gh-prs" = ["gh pr"]
+"brew-packages" = ["brew uninstall", "brew upgrade", "brew info", "brew reinstall"]
+"npm-scripts" = ["npm run", "yarn run", "pnpm run", "bun run"]
+"ssh-hosts" = ["ssh"]
+"man-pages" = ["man"]
+"procs" = ["kill", "lsof -p"]
+"tmux-sessions" = ["tmux attach", "tmux kill-session"]
 "docker-images" = ["docker run"]
-"git-repos" = ["nvim", "code", "hx", "git clone"]
 
 
 [shell_integration.keybindings]
-# controls which key binding should trigger tv
-# for shell autocomplete
+# Only read by `tv init fish`, which is not used here: the keys are bound in
+# ~/.config/fish/conf.d/television.fish.
 "smart_autocomplete" = "ctrl-t"
-# controls which keybinding should trigger tv
-# for command history
 "command_history" = "ctrl-r"

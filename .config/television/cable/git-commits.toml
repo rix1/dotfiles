@@ -1,0 +1,31 @@
+[metadata]
+name = "git-commits"
+description = "Commits on the current branch, newest first; outputs the short hash"
+requirements = ["git"]
+
+# The stock git-log channel draws a graph, and its output template returns an
+# empty string on merge commits (`*   abc1234`). One commit per line, hash
+# first, keeps the hash easy to take.
+[source]
+command = "git log --color=always --format='%C(yellow)%h%Creset %s %C(green)(%cr)%Creset %C(blue)<%an>%Creset%C(auto)%d%Creset'"
+output = "{strip_ansi|split: :0}"
+ansi = true
+no_sort = true
+frecency = false
+
+[preview]
+command = "git show -p --stat --pretty=fuller --color=always '{strip_ansi|split: :0}' | head -n 1000"
+
+[keybindings]
+ctrl-y = "actions:cherry-pick"
+ctrl-o = "actions:checkout"
+
+[actions.cherry-pick]
+description = "Cherry-pick the selected commit"
+command = "git cherry-pick '{strip_ansi|split: :0}'"
+mode = "execute"
+
+[actions.checkout]
+description = "Checkout the selected commit"
+command = "git checkout '{strip_ansi|split: :0}'"
+mode = "execute"

@@ -160,6 +160,40 @@ Custom commands live in `~/.config/fish/functions/`, with tab completions in
 `~/.config/fish/completions/`. Helper scripts they depend on live in
 `~/.config/bin/`.
 
+### television pickers
+
+`conf.d/television.fish` binds television (`tv`) pickers on the command line.
+They replaced PatrickF1/fzf.fish and kept its keys.
+
+| Key          | Picks                                   | Inserts          |
+| ------------ | --------------------------------------- | ---------------- |
+| `ctrl-t`     | whatever fits the command being typed   | the selection    |
+| `ctrl-r`     | history                                 | the command      |
+| `ctrl-f`     | files (`ctrl-s` in tv: hidden files too) | paths            |
+| `ctrl-alt-l` | commits (`git-commits`)                 | short hash       |
+| `ctrl-alt-s` | `git status` (`git-status`)             | paths            |
+| `ctrl-alt-p` | processes                               | pid              |
+| `ctrl-v`     | environment variables                   | the name         |
+
+`ctrl-t` chooses a channel from the command before the cursor: `git checkout`
+lists branches, `git add` the changed files, `git show` commits, `cd`
+directories, `brew uninstall` installed packages, anything unknown lists
+files. The mapping is `[shell_integration.channel_triggers]` in
+`television/config.toml`. A token that starts with a directory (`src/comp`)
+searches inside it. `tab` selects several entries.
+
+The pieces are `functions/_tv_complete.fish`, `_tv_pick.fish`,
+`_tv_history.fish` and `_tv_inline.fish`. `tv init fish` is deliberately not
+sourced: it costs a process on every shell start, and enter in several stock
+channels runs an action (checkout, ssh) instead of returning the entry, which
+these functions override. `ctrl-r` filters history by the typed text in fish
+before tv opens, because tv 0.15 sometimes lists unsorted results oldest
+first when it is started with a query.
+
+Only channels written here are tracked (`git-commits`, `git-status`,
+`worktrees`, ...). The stock ones come from `tv update-channels`, which
+`dotfiles-setup` runs when they are missing.
+
 ### yt-transcript
 
 Downloads the captions of a YouTube video and prints them as plain text, for

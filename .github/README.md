@@ -8,7 +8,7 @@ that keep each machine in sync and provisioned.
 
 ![Rex with fish, Starship and Claude Code](https://github.com/user-attachments/assets/9aa71898-a9d7-46a2-8024-cf47eb5682b6)
 
-- [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher). Comes with [git aliases](https://github.com/jhillyerd/plugin-git), [fzf](https://github.com/PatrickF1/fzf.fish) for easy search and [z](https://github.com/jethrokuan/z) for jumping around directories, plus a pile of small functions.
+- [Fish shell](https://fishshell.com/) & [Fisher](https://github.com/jorgebucaran/fisher). Comes with [git aliases](https://github.com/jhillyerd/plugin-git), [television](https://github.com/alexpasmantier/television) pickers on `ctrl-t`/`ctrl-r` and [z](https://github.com/jethrokuan/z) for jumping around directories, plus a pile of small functions.
 - [Starship](https://starship.rs/) prompt, with a counter for LLM conversations in the current directory, drawn with a tiny font of LLM logos
 - [AeroSpace](https://github.com/nikitabobko/AeroSpace) tiling, [television](https://github.com/alexpasmantier/television) pickers, [Zed](https://zed.dev/) keymap and snippets
 - Scripts in `~/.local/bin`: `repo-status` (every repo under a folder, sorted by what needs attention), `claude-agent-view` (follow a Claude Code subagent in its own pane), `reflect-personal` (build my own [Reflect](https://reflect.app) from feature branches)
@@ -41,7 +41,7 @@ come up along the way:
 ### Why the order matters
 
 1. **Install tools before fish starts for the first time.** Fish sources
-   starship, direnv, fnm and fzf on every start, so they have to exist first.
+   starship, direnv and fnm on every start, so they have to exist first.
    They are all in [`~/.config/Brewfile`](../.config/Brewfile), which
    `dotfiles-setup` installs before it makes fish the login shell.
 2. **Be in fish before running any `curl | sh` installer.** The installers for

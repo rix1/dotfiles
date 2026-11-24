@@ -6,8 +6,6 @@ fish_add_path /opt/homebrew/bin
 
 source $HOME/.config/fish/aliases.fish
 
-fzf_configure_bindings --directory=\cf
-
 # pyenv init - | source
 
 starship init fish | source

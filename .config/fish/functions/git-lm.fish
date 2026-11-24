@@ -1,4 +1,4 @@
-function git-lm --description "Search files by last modification time with git last-modified, preview diffs."
+function git-lm --description "Browse files by when they were last modified (git last-modified); preview that commit's diff"
     set -l target_path $argv[1]; or set -l target_path '.'
 
     if not git rev-parse --git-dir >/dev/null 2>&1
@@ -6,26 +6,13 @@ function git-lm --description "Search files by last modification time with git l
         return 1
     end
 
-    # Set preview command
-    set -f preview_cmd 'git show --color=always -p {1} -- {2..}'
-    if set --query fzf_diff_highlighter
-        set preview_cmd "$preview_cmd | $fzf_diff_highlighter"
-    end
-
-    # Format git last-modified output with colors
-    git last-modified $target_path -r | while read -la line
-        set parts (string split '        ' $line)
-        # echo "$(string sub -l 10 $parts[1]) $parts[2]"
-        # echo "$(git show -s --format='%h [%ar] %an %s' $parts[1] --abbrev=7)" | string sub -l 70
-        set result (echo "$(git show -s --format='%h [%ar] %an' $parts[1] --abbrev=7)" | string sub -l 70)
-        echo "$result $parts[2]"
-    end | _fzf_wrapper --ansi \
-        --multi \
-        --prompt="Git Last Modified> " \
-        --preview=$preview_cmd \
-        --preview-window=right:60% \
-        --header 'Select files to view changes (last modified)' \
-        $fzf_git_log_opts
-
-    commandline --function repaint
+    # One row per file: "<hash> [<age>] <author><TAB><path>". The tab keeps
+    # the path apart from an author name that may contain spaces.
+    git last-modified $target_path -r | while read -l commit file
+        printf '%s\t%s\n' (git show -s --format='%h [%ar] %an' --abbrev=7 $commit | string sub -l 70) $file
+    end | tv --no-sort \
+        --input-header 'Last modified' \
+        --source-output '{split:\t:1}' \
+        --preview-command "git show --color=always -p '{split: :0}' -- '{split:\t:1}'" \
+        --preview-size 60
 end

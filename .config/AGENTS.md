@@ -102,7 +102,8 @@ tells you. It is idempotent and pushes with `--force-with-lease`.
 `conf setup` runs `~/.local/bin/dotfiles-setup`, the per-machine
 provisioning: Homebrew present, everything in `~/.config/Brewfile` installed
 (`brew bundle`, never upgrades or removes), fish >= 4 as the login shell,
-fisher plugins from `fish_plugins`, tpm and the tmux plugins, fonts from
+fisher plugins from `fish_plugins`, tpm and the tmux plugins, television's
+stock channels (`tv update-channels`), fonts from
 `~/.config/fonts` into `~/Library/Fonts`, the Ghostty `font-codepoint-map`
 line, the Starship counter binary, Link Router where the Search browser is
 installed (cloned to `~/Development/link-router`, built into `~/Applications`;
