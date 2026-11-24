@@ -31,21 +31,25 @@ hook() {
 	[ -n "$agent_id" ] && [ -n "$parent" ] || exit 0
 
 	dir="${parent%.jsonl}/subagents"
-	transcript="$dir/agent-$agent_id.jsonl"
 
-	# The meta file carries the Agent call's description; it can land a moment
-	# after the hook fires, so wait briefly before falling back to the type.
+	# The Agent tool's subagents write straight into subagents/, a workflow's one
+	# level down, in subagents/workflows/<run>/. The meta file says which, and
+	# carries the description; it can land a moment after the hook fires, so wait
+	# briefly before falling back to the type.
 	name=""
 	tries=0
 	while [ $tries -lt 20 ]; do
-		if [ -f "$dir/agent-$agent_id.meta.json" ]; then
-			name=$(jq -r '.description // empty' "$dir/agent-$agent_id.meta.json")
+		meta=$(ls "$dir/agent-$agent_id.meta.json" "$dir"/workflows/*/"agent-$agent_id.meta.json" 2>/dev/null | head -1)
+		if [ -n "$meta" ]; then
+			name=$(jq -r '.description // empty' "$meta")
+			dir=$(dirname "$meta")
 			break
 		fi
 		tries=$((tries + 1))
 		sleep 0.1
 	done
 	[ -n "$name" ] || name="$agent_type"
+	transcript="$dir/agent-$agent_id.jsonl"
 
 	# One minimized floating layer per subagent, in the window Claude runs in.
 	# Layers are cascaded so restoring several does not stack them exactly.
@@ -54,7 +58,7 @@ hook() {
 	off=$(awk -v n="$n" 'BEGIN { if (n < 1) n = 1; printf "%.2f", ((n - 1) % 6) * 0.04 }')
 	req=$(jq -nc --arg s "$REX_SESSION" --arg w "$window" --arg name "$name" --arg self "$0" \
 		--arg t "$transcript" --argjson off "$off" '
-	  {session_id: $s, bounds: [0.45 + $off, 0.05 + $off, 0.5, 0.6], focus: false,
+	  {session_id: $s, bounds: [0.45 - $off, 0.05 + $off, 0.5, 0.6], focus: false,
 	   layout: {block: {flavor: "com.superlogical.terminal.shell", label: $name,
 	     options: {command: [$self, $t], exit: {on_completion: false}}}}}
 	  + (if $w == "" then {} else {window_id: $w} end)')
