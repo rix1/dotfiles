@@ -6,8 +6,6 @@ fish_add_path /opt/homebrew/bin
 
 source $HOME/.config/fish/aliases.fish
 
-# pyenv init - | source
-
 starship init fish | source
 
 # Starship LLM conversation counter icons: private-use glyphs from the
