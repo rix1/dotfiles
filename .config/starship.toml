@@ -2,6 +2,7 @@
 format = """
 $username\
 $directory\
+${custom.treehouse}\
 $git_branch\
 $git_status\
 $package\
@@ -170,3 +171,16 @@ style = "dimmed white"
 symbol = ""
 use_stdin = false
 when = "true"
+
+# A treehouse worktree has the repository's own name as its directory, so the
+# prompt looks exactly like the main checkout. Show the slot it is
+# (~/.treehouse/<repo>-<hash>/<slot>/<repo>) next to the directory. Neither
+# treehouse nor starship has this built in.
+[custom.treehouse]
+when = 'case "$PWD/" in "$HOME"/.treehouse/*/*/*) true ;; *) false ;; esac'
+command = 'p=${PWD#"$HOME"/.treehouse/}; p=${p#*/}; echo "${p%%/*}"'
+description = "The treehouse pool slot this directory belongs to"
+format = '[ $output]($style) '
+shell = ["/bin/sh", "-c"]
+style = "green"
+use_stdin = false
