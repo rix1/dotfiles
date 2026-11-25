@@ -93,6 +93,10 @@ scripts/k8s-shell-custom.sh
 !.claude/CLAUDE.md
 !.claude/about-me.md
 
+# Codex: only the global AGENTS.md is tracked; the rest is state or secrets
+.codex/*
+!.codex/AGENTS.md
+
 # Reflect caches and local editor files
 .reflect/
 Thumbs.db
