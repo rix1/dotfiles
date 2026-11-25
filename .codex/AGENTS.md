@@ -15,7 +15,7 @@ technical systems in buildings (ventilation, heating, plumbing and electrical, i
 take the professional liability (ansvarsrett) ourselves, and do a growing share of the work with
 our own AI tools. Founded in 2026 by Arif Mirza (CEO), Thorvald Thorsnes and Pål Eskild Rasmussen
 (backgrounds from Spacemaker, Autodesk and Enode). Pre-seed of NOK 60 million led by Seedcamp in
-October 2026. Betonmast is among the customers. Office at Youngstorget 3, Oslo.
+October 2026. Betonmast is among the customers.
 
 The code is one pnpm monorepo, `solveraeng/os`: TypeScript on Cloudflare Workers, every app under
 `os.solvera.ai`, and a wiki that holds the company's knowledge. Text people read is Norwegian;
