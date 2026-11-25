@@ -260,6 +260,8 @@ fallback_channel = "files"
 ]
 "git-stash" = ["git stash pop", "git stash apply", "git stash drop", "git stash show"]
 "git-worktrees" = ["git worktree remove"]
+"treehouse" = ["treehouse enter", "treehouse lease", "treehouse return"]
+"treehouse-paths" = ["treehouse destroy"]
 "gh-prs" = ["gh pr"]
 "brew-packages" = ["brew uninstall", "brew upgrade", "brew info", "brew reinstall"]
 "npm-scripts" = ["npm run", "yarn run", "pnpm run", "bun run"]

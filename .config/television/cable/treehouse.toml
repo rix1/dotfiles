@@ -1,0 +1,23 @@
+[metadata]
+name = "treehouse"
+description = "Worktrees in this repository's treehouse pool; outputs the name"
+requirements = ["treehouse", "jq"]
+
+# Rows: name, status, branch, path. `treehouse enter`, `lease` and `return`
+# take the name; `destroy` only takes a path, hence the two channels
+# (treehouse and treehouse-paths) with the same rows and a different output.
+[source]
+command = '''TREEHOUSE_NO_UPDATE_CHECK=1 treehouse status --json 2>/dev/null | jq -r '.[] | [.name, .status, (if .branch == "" then "(detached)" else .branch end), .path] | @tsv' '''
+display = "{split:\\t:0}  {split:\\t:1}  {split:\\t:2}"
+output = "{split:\\t:0}"
+no_sort = true
+frecency = false
+
+[preview]
+command = '''
+cd '{split:\t:3}' || exit
+git -c color.status=always status -sb
+echo
+git log --oneline -15 --color=always
+'''
+shell = "bash"
