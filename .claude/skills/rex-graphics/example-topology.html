@@ -1,0 +1,144 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;background:#1b1d22}
+  svg{display:block;font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif}
+  .t{fill:#e8eaed;font-size:17px;font-weight:600}
+  .l{fill:#c3c7cd;font-size:14px}
+  .m{fill:#8b919a;font-size:13px}
+  .mono{font-family:"SF Mono",Menlo,monospace;font-size:13px;fill:#c3c7cd}
+  .box{fill:#262a31;stroke:#3d434c;stroke-width:1.5}
+  .new{fill:#1f2a3d;stroke:#4f8cff;stroke-width:2}
+  .gone{fill:#2b2224;stroke:#e06c75;stroke-width:1.5;stroke-dasharray:6 5}
+  .later{fill:#23262b;stroke:#6b717a;stroke-width:1.5;stroke-dasharray:6 5}
+  .ext{fill:#22262c;stroke:#56606c;stroke-width:1.5}
+  .grp{fill:none;stroke:#4a505a;stroke-width:1.5;stroke-dasharray:3 4}
+  .glabel{fill:#8b919a;font-size:13px;font-weight:600;letter-spacing:.06em}
+  .e{fill:none;stroke:#aab1bb;stroke-width:1.6}
+  .ed{fill:none;stroke:#6b717a;stroke-width:1.6;stroke-dasharray:6 5}
+  .el{fill:#d7dbe0;font-size:12.5px}
+  .elbg{fill:#1b1d22}
+  .tag{font-size:11px;font-weight:700;letter-spacing:.08em}
+</style></head>
+<body>
+<svg width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#aab1bb"/></marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b717a"/></marker>
+  </defs>
+
+  <text x="40" y="52" class="t" style="font-size:24px">Order intake and notifications — proposed topology</text>
+
+  <!-- groups -->
+  <rect class="grp" x="410" y="86" width="560" height="390" rx="14"/>
+  <text class="glabel" x="428" y="108">REPO A</text>
+  <rect class="grp" x="410" y="510" width="1150" height="460" rx="14"/>
+  <text class="glabel" x="428" y="532">REPO B · ONE LOGIN</text>
+  <text class="m" x="428" y="556">The gateway holds the domain:  /admin · /reports · /notify/&lt;channel&gt; → notifier</text>
+
+  <!-- external -->
+  <rect class="ext" x="40" y="120" width="300" height="100" rx="10"/>
+  <text class="tag" x="58" y="144" fill="#8b919a">EXTERNAL</text>
+  <text class="t" x="58" y="170">web-shop</text>
+  <text class="l" x="58" y="194">Checkout form</text>
+
+  <rect class="ext" x="40" y="300" width="300" height="100" rx="10"/>
+  <text class="tag" x="58" y="324" fill="#8b919a">EXTERNAL</text>
+  <text class="t" x="58" y="350">Chat channel</text>
+  <text class="l" x="58" y="374">One post per order</text>
+
+  <rect class="ext" x="40" y="590" width="300" height="170" rx="10"/>
+  <text class="tag" x="58" y="614" fill="#8b919a">EXTERNAL</text>
+  <text class="t" x="58" y="640">Mail provider</text>
+  <text class="mono" x="58" y="668">orders@   first</text>
+  <text class="mono" x="58" y="690">support@  later</text>
+  <text class="m" x="58" y="724">The only copy of the mail.</text>
+
+  <!-- intake -->
+  <rect class="box" x="440" y="124" width="500" height="216" rx="10"/>
+  <text class="tag" x="460" y="148" fill="#8b919a">EXISTING · SLIMMED</text>
+  <text class="t" x="460" y="174">order-intake</text>
+  <text class="l" x="460" y="202">• form → attachment in object storage, row in SQL</text>
+  <text class="l" x="460" y="226">• e-mail to orders@</text>
+  <text class="l" x="460" y="250">• one chat post per order, retries</text>
+  <text class="mono" x="460" y="310">IntakeApi.submit · OrdersApi.list</text>
+
+  <!-- removed -->
+  <rect class="gone" x="440" y="360" width="500" height="96" rx="10"/>
+  <text class="tag" x="460" y="384" fill="#e06c75">REMOVED</text>
+  <text class="l" x="460" y="410">Status read from chat reactions · its own order list</text>
+  <text class="l" x="460" y="434">Mailbox sync → rebuilt in the notifier</text>
+
+  <!-- rules -->
+  <rect class="box" x="1100" y="124" width="460" height="216" rx="10"/>
+  <text class="tag" x="1120" y="148" fill="#8b919a">DESIGN RULES</text>
+  <text class="l" x="1120" y="178">• The mailbox is the key in every row, URL and API</text>
+  <text class="l" x="1120" y="204">• Pointers stored, bodies read live</text>
+  <text class="l" x="1120" y="230">• Access per mailbox</text>
+  <text class="m" x="1120" y="318">A note under the rules, in the muted style.</text>
+
+  <!-- notifier -->
+  <rect class="new" x="440" y="584" width="500" height="360" rx="10"/>
+  <text class="tag" x="460" y="608" fill="#4f8cff">NEW</text>
+  <text class="t" x="460" y="634">notifier — shared inbox</text>
+  <text class="mono" x="460" y="662">/notify/orders · /notify/support</text>
+  <text class="l" x="460" y="694">• sync → conversations per mailbox</text>
+  <text class="l" x="460" y="720">• read, search, filter, reply</text>
+  <text class="l" x="460" y="746">• who's waiting on us</text>
+  <text class="l" x="460" y="784">API + embeddable components</text>
+
+  <!-- admin -->
+  <rect class="box" x="1080" y="584" width="460" height="200" rx="10"/>
+  <text class="tag" x="1100" y="608" fill="#8b919a">EXISTING</text>
+  <text class="t" x="1100" y="634">Admin — /admin</text>
+  <text class="l" x="1100" y="662">• status, owner, notes, pipeline</text>
+  <text class="l" x="1100" y="688">• embeds the conversation view</text>
+  <text class="mono" x="1100" y="760">/admin/mcp</text>
+
+  <!-- reports -->
+  <rect class="later" x="1080" y="810" width="460" height="134" rx="10"/>
+  <text class="tag" x="1100" y="834" fill="#8b919a">EXISTING · INBOX LATER</text>
+  <text class="t" x="1100" y="860">Reports — /reports</text>
+  <text class="l" x="1100" y="888">• embeds support@ conversations</text>
+
+  <!-- edges -->
+  <path class="e" d="M340,170 L438,170" marker-end="url(#a)"/>
+  <rect class="elbg" x="346" y="142" width="86" height="18"/>
+  <text class="el" x="350" y="156">submit()</text>
+
+  <path class="e" d="M440,290 L390,290 L390,350 L342,350" marker-end="url(#a)"/>
+  <text class="el" x="360" y="282" text-anchor="middle">post</text>
+
+  <path class="e" d="M440,320 L405,320 L405,640 L342,640" marker-end="url(#a)"/>
+  <text class="el" x="398" y="520" text-anchor="end">e-mail</text>
+  <text class="el" x="398" y="536" text-anchor="end">to orders@</text>
+
+  <path class="e" d="M440,710 L342,710" marker-start="url(#a)" marker-end="url(#a)"/>
+  <rect class="elbg" x="348" y="718" width="88" height="40"/>
+  <text class="el" x="352" y="733">sync, read,</text>
+  <text class="el" x="352" y="749">send</text>
+
+  <path class="e" d="M1130,584 L1130,480 L1040,480 L1040,232 L942,232" marker-end="url(#a)"/>
+  <rect class="elbg" x="980" y="360" width="120" height="40"/>
+  <text class="el" x="1040" y="375" text-anchor="middle">OrdersApi</text>
+  <text class="el" x="1040" y="391" text-anchor="middle">.list()</text>
+
+  <path class="e" d="M1080,690 L942,690" marker-end="url(#a)"/>
+  <rect class="elbg" x="958" y="660" width="108" height="20"/>
+  <text class="el" x="1011" y="675" text-anchor="middle">embeds view</text>
+
+  <path class="ed" d="M1080,876 L942,876" marker-end="url(#ad)"/>
+  <rect class="elbg" x="958" y="846" width="108" height="20"/>
+  <text class="el" x="1011" y="861" text-anchor="middle" fill="#8b919a">embeds (later)</text>
+
+  <!-- legend -->
+  <text class="glabel" x="40" y="820">LEGEND</text>
+  <rect class="box" x="40" y="836" width="28" height="18" rx="4"/><text class="m" x="78" y="850">existing</text>
+  <rect class="new" x="40" y="864" width="28" height="18" rx="4"/><text class="m" x="78" y="878">new</text>
+  <rect class="gone" x="40" y="892" width="28" height="18" rx="4"/><text class="m" x="78" y="906">removed</text>
+  <path class="e" d="M180,845 L230,845" marker-end="url(#a)"/><text class="m" x="240" y="850">call</text>
+  <path class="ed" d="M180,873 L230,873" marker-end="url(#ad)"/><text class="m" x="240" y="878">later</text>
+</svg>
+</body></html>
