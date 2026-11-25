@@ -90,6 +90,7 @@ scripts/k8s-shell-custom.sh
 # Claude Code: only the skills are tracked; the rest is state or secrets
 .claude/*
 !.claude/skills/
+!.claude/CLAUDE.md
 
 # Reflect caches and local editor files
 .reflect/
