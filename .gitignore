@@ -91,6 +91,7 @@ scripts/k8s-shell-custom.sh
 .claude/*
 !.claude/skills/
 !.claude/CLAUDE.md
+!.claude/about-me.md
 
 # Reflect caches and local editor files
 .reflect/

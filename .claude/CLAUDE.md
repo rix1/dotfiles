@@ -7,10 +7,16 @@ The same rules, worded for Codex, are in `~/.codex/AGENTS.md`. Change both toget
 
 ## Git
 
-- **Worktrees:** make them with the EnterWorktree tool, or `isolation: worktree` on a subagent,
-  never `git worktree add`. The WorktreeCreate hook leases a slot from the treehouse pool, so
-  `treehouse status` sees it. A slot arrives on a detached HEAD; name a branch when there is
-  something to push.
+- **Worktrees:** come from the treehouse pool, never `git worktree add`. The EnterWorktree tool,
+  `isolation: worktree` on a subagent and `claude --worktree` already lease a slot through the
+  `claude-worktree` hooks, and the slot arrives on a detached HEAD; name a branch when there is
+  something to push. When you need one by hand:
+
+      treehouse get --lease --lease-holder "claude:<topic>" -b <branch>
+
+  It prints the worktree's path (under `~/.treehouse`) and nothing else on stdout. When the work is
+  merged or abandoned, release it with `treehouse return <path>`. It refuses while the worktree has
+  uncommitted changes, so commit them or ask first. `treehouse status` lists the repo's pool.
 - **Commits:** always `git commit --no-gpg-sign`. Agents have no GPG passphrase, and a signed
   commit hangs or fails. `settings.json` also sets `commit.gpgsign=false` through `env`, but pass
   the flag anyway, since that env doesn't reach every shell.
