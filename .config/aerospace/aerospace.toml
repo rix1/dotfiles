@@ -101,11 +101,6 @@ on-window-detected = [
     # See: https://nikitabobko.github.io/AeroSpace/commands#fullscreen
     ctrl-alt-enter = 'fullscreen'
 
-    # Rectangle-style Larger/Smaller: resizes a floating window around its
-    # centre; on a tiled window it does what alt-equal/alt-minus do.
-    ctrl-alt-equal = 'exec-and-forget ~/.local/bin/aerospace-grow +80'
-    ctrl-alt-minus = 'exec-and-forget ~/.local/bin/aerospace-grow -80'
-
     # See: https://nikitabobko.github.io/AeroSpace/commands#focus
     alt-h = 'focus left'
     alt-j = 'focus down'
