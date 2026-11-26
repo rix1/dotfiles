@@ -7,16 +7,20 @@ The same rules, worded for Codex, are in `~/.codex/AGENTS.md`. Change both toget
 
 ## Git
 
-- **Worktrees:** come from the treehouse pool, never `git worktree add`. The EnterWorktree tool,
-  `isolation: worktree` on a subagent and `claude --worktree` already lease a slot through the
-  `claude-worktree` hooks, and the slot arrives on a detached HEAD; name a branch when there is
-  something to push. When you need one by hand:
+- **Worktrees:** come from the treehouse pool, never `git worktree add`. To work in one, use the
+  EnterWorktree tool. It leases a slot through the `claude-worktree` hooks, as `isolation: worktree`
+  on a subagent and `claude --worktree` do, and the `SessionEnd` hook returns the slot when the
+  session ends, if it has no uncommitted changes, no unpushed commits and no process running in it.
+  The slot arrives on a detached HEAD; name a branch when there is something to push.
+  Lease one by hand only when EnterWorktree can't do the job, such as a second worktree beside the
+  one you are in:
 
       treehouse get --lease --lease-holder "claude:<topic>" -b <branch>
 
-  It prints the worktree's path (under `~/.treehouse`) and nothing else on stdout. When the work is
-  merged or abandoned, release it with `treehouse return <path>`. It refuses while the worktree has
-  uncommitted changes, so commit them or ask first. `treehouse status` lists the repo's pool.
+  It prints the worktree's path (under `~/.treehouse`) and nothing else on stdout. Nothing returns
+  a slot leased this way: when the work is merged or abandoned, release it with
+  `treehouse return <path>` before the session ends. It refuses while the worktree has uncommitted
+  changes, so commit them or ask first. `treehouse status` lists the repo's pool.
 - **Commits:** always `git commit --no-gpg-sign`. Agents have no GPG passphrase, and a signed
   commit hangs or fails. `settings.json` also sets `commit.gpgsign=false` through `env`, but pass
   the flag anyway, since that env doesn't reach every shell.

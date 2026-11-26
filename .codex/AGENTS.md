@@ -43,8 +43,9 @@ The same rules, worded for Claude Code, are in `~/.claude/CLAUDE.md`. Change bot
       treehouse get --lease --lease-holder "codex:<topic>" -b <branch>
 
   It prints the worktree's path (under `~/.treehouse`) and nothing else on stdout; work in that
-  directory. When the work is merged or abandoned, release it with `treehouse return <path>`. It
-  refuses while the worktree has uncommitted changes, so commit them or ask first.
+  directory. Nothing returns it for you: when the work is merged or abandoned, release it with
+  `treehouse return <path>` before the session ends. It refuses while the worktree has uncommitted
+  changes, so commit them or ask first.
   `treehouse status` lists the repo's pool.
 - **Commits:** always `git commit --no-gpg-sign` (or `git -c commit.gpgsign=false commit`). Agents have no GPG passphrase, and a signed
   commit hangs or fails. `config.toml` also sets `commit.gpgsign=false` in the shell
